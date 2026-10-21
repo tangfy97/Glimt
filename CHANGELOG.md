@@ -4,7 +4,7 @@ All notable changes to Glimt are listed here. The format follows [Keep a Changel
 
 ## [Unreleased]
 
-## [0.1.0]
+## [0.1.0] - 2026-10-21
 
 The first public version.
 

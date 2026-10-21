@@ -55,7 +55,7 @@ Glimt is for going through a lot of pictures quickly: the hundreds from a trip, 
 
 ## Install
 
-**Download:** get the latest version from [Releases](https://github.com/tangfy97/Glimt/releases), unzip, and drag Glimt to Applications. Glimt needs macOS 14 Sonoma or later.
+**Download:** get the latest `.dmg` from [Releases](https://github.com/tangfy97/Glimt/releases), open it, and drag Glimt to Applications. It is signed and notarized by Apple. Glimt needs macOS 14 Sonoma or later.
 
 **Build from source:** you need Xcode 16 or later and [XcodeGen](https://github.com/yonaskolb/XcodeGen).
 
