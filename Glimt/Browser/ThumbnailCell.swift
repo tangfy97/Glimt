@@ -49,19 +49,20 @@ final class ThumbnailTileView: NSView {
         super.init(frame: frameRect)
         wantsLayer = true
         layerContentsRedrawPolicy = .onSetNeedsDisplay
-        plate.cornerRadius = 7
+        // Prints have square corners; the selection ring is concentric with them (radius 0
+        // inside, ring radius = gap) rather than a rounded card behind the picture.
+        plate.cornerRadius = 3
         plate.cornerCurve = .continuous
         imageLayer.contentsGravity = .resize
         imageLayer.minificationFilter = .trilinear
         imageLayer.masksToBounds = true
-        imageLayer.cornerRadius = 2
-        badgeBackground.cornerRadius = 4
+        badgeBackground.cornerRadius = 3
         badgeBackground.backgroundColor = NSColor(white: 0, alpha: 0.55).cgColor
         badge.fontSize = 10
         badge.font = NSFont.monospacedDigitSystemFont(ofSize: 10, weight: .semibold)
         badge.foregroundColor = NSColor.white.cgColor
         badge.alignmentMode = .center
-        nameBackground.cornerRadius = 5
+        nameBackground.cornerRadius = 4
         nameBackground.cornerCurve = .continuous
         for sublayer in [plate, imageLayer, badgeBackground, badge, nameBackground] {
             sublayer.actions = ["contents": NSNull(), "bounds": NSNull(), "position": NSNull(), "hidden": NSNull()]
@@ -149,7 +150,7 @@ final class ThumbnailTileView: NSView {
         super.layout()
         let image = imageRect
         imageLayer.frame = image
-        plate.frame = image.insetBy(dx: -5, dy: -5)
+        plate.frame = image.insetBy(dx: -3, dy: -3)
 
         let badgeSize = badge.preferredFrameSize()
         let badgeFrame = NSRect(x: image.maxX - badgeSize.width - 10, y: image.maxY - badgeSize.height - 7,
@@ -179,9 +180,12 @@ final class ThumbnailTileView: NSView {
 
     override func updateLayer() {
         let accent = NSColor.controlAccentColor
-        plate.backgroundColor = isSelected ? NSColor.labelColor.withAlphaComponent(0.1).cgColor : nil
+        plate.backgroundColor = nil
         plate.borderWidth = isSelected ? 2 : 0
         plate.borderColor = accent.cgColor
+        // A hairline keeps white pictures from dissolving into the paper background.
+        imageLayer.borderWidth = 1 / (window?.backingScaleFactor ?? 2)
+        imageLayer.borderColor = NSColor.labelColor.withAlphaComponent(0.08).cgColor
         nameBackground.backgroundColor = accent.cgColor
         nameLabel.textColor = isSelected ? .white : .secondaryLabelColor
         for (dot, color) in zip(tagDots, tagColors) {

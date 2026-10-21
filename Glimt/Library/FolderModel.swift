@@ -6,7 +6,7 @@ import QuartzCore
 @MainActor
 final class FolderModel {
     enum SortKey: String, CaseIterable {
-        case name, modified, created, size
+        case name, modified, created, added, kind, size
     }
 
     enum KindFilter: String, CaseIterable {
@@ -40,6 +40,16 @@ final class FolderModel {
     }
     var tagFilter: String? {
         didSet { refilter() }
+    }
+    /// Every image and video below the folder instead of just its direct contents.
+    var includesSubfolders = Preferences.includesSubfolders {
+        didSet {
+            guard includesSubfolders != oldValue else { return }
+            Preferences.includesSubfolders = includesSubfolders
+            isLoading = true
+            resort()
+            Task { await refresh() }
+        }
     }
     var isFiltered: Bool { !searchText.isEmpty || kindFilter != .all || tagFilter != nil }
 
@@ -80,7 +90,7 @@ final class FolderModel {
         scanGeneration += 1
         let generation = scanGeneration
         let started = CACurrentMediaTime()
-        var items = await FolderScanner.items(in: folder)
+        var items = await FolderScanner.items(in: folder, recursive: includesSubfolders)
         guard generation == scanGeneration, folder == self.folder else { return }
         lastScanMilliseconds = (CACurrentMediaTime() - started) * 1000
         // Keep the tags we already know until the tag pass below has fresh ones.
@@ -152,7 +162,7 @@ final class FolderModel {
         guard let index = index(of: old) else { return }
         let item = all[index]
         let renamed = item.url.deletingLastPathComponent().appendingPathComponent(new.lastPathComponent)
-        all[index] = Item(url: renamed, kind: item.kind, fileSize: item.fileSize, modified: item.modified, created: item.created, tags: item.tags)
+        all[index] = item.renamed(to: renamed)
         resort(change: .renamed(from: item.url, to: renamed))
     }
 
@@ -166,10 +176,21 @@ final class FolderModel {
         index(of: url).map { all[$0] }
     }
 
-    /// Whether `url` lives directly in the open folder.
-    func contains(folderOf url: URL) -> Bool {
-        guard let folder else { return false }
-        return Self.path(url.deletingLastPathComponent()) == folder.path
+    /// Whether `url` is one of the files currently listed.
+    func contains(_ url: URL) -> Bool {
+        index(of: url) != nil
+    }
+
+    /// Files listed next to `url` with the same base name (RAW+JPEG pairs, Live Photo movies).
+    func siblings(of url: URL) -> [URL] {
+        let parent = Self.path(url.deletingLastPathComponent())
+        let base = url.deletingPathExtension().lastPathComponent.lowercased()
+        let path = Self.path(url)
+        return all.lazy.filter {
+            $0.isMedia && $0.url.path != path
+                && $0.url.deletingPathExtension().lastPathComponent.lowercased() == base
+                && $0.url.deletingLastPathComponent().path == parent
+        }.map(\.url)
     }
 
     private func index(of url: URL) -> Int? {
@@ -193,6 +214,8 @@ final class FolderModel {
             case .name: order = .orderedSame
             case .modified: order = compare(a.modified, b.modified)
             case .created: order = compare(a.created, b.created)
+            case .added: order = compare(a.added, b.added)
+            case .kind: order = a.type == b.type ? .orderedSame : (a.type < b.type ? .orderedAscending : .orderedDescending)
             case .size: order = compare(a.fileSize, b.fileSize)
             }
             let resolved = order != .orderedSame ? order : a.name.localizedStandardCompare(b.name)

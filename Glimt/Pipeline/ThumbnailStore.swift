@@ -9,12 +9,12 @@ struct Thumbnail: Sendable {
     let duration: Double?
 }
 
-/// Grid thumbnails in two sizes (256 and 512 px), cached in memory by byte cost and on
+/// Grid thumbnails in three sizes (256, 512, 1024 px), cached in memory by byte cost and on
 /// disk in ~/Library/Caches so a folder seen once opens instantly afterwards.
 @MainActor
 final class ThumbnailStore {
     static let shared = ThumbnailStore()
-    static let sizes = [256, 512]
+    static let sizes = [256, 512, 1024]
 
     final class Token {}
 
@@ -41,7 +41,7 @@ final class ThumbnailStore {
     }()
 
     static func pixels(forPoints points: CGFloat, scale: CGFloat) -> Int {
-        points * scale <= 256 ? 256 : 512
+        sizes.first { CGFloat($0) >= points * scale * 0.9 } ?? 1024
     }
 
     /// Exact size if cached, otherwise any cached size (to show while the right one loads).

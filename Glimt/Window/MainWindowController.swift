@@ -23,10 +23,13 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
     private var sizeSlider: NSSlider?
 
     var onOpenedURL: ((URL) -> Void)?
+    var onClose: ((MainWindowController) -> Void)?
+    /// ⌘N / ⌘T: asks the app for another window or tab.
+    var onNewWindow: ((MainWindowController, _ asTab: Bool) -> Void)?
     /// Benchmark / self-test hook: fires after each folder load.
     var onFolderLoaded: (() -> Void)?
 
-    init() {
+    init(restoresFrame: Bool = true) {
         let window = MainWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1180, height: 780),
             styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
@@ -35,7 +38,8 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         window.titlebarSeparatorStyle = .automatic
         window.toolbarStyle = .unified
         window.collectionBehavior.insert(.fullScreenPrimary)
-        window.tabbingMode = .disallowed
+        window.tabbingMode = .automatic
+        window.tabbingIdentifier = "Glimt"
         window.minSize = NSSize(width: 480, height: 320)
         window.isReleasedWhenClosed = false
         window.contentView = rootView
@@ -43,8 +47,10 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
 
         window.delegate = self
         window.keyHandler = { [weak self] event in self?.handleWindowKey(event) ?? false }
-        if !window.setFrameUsingName("Main") { window.center() }
-        window.setFrameAutosaveName("Main")
+        if restoresFrame {
+            if !window.setFrameUsingName("Main") { window.center() }
+            window.setFrameAutosaveName("Main")
+        }
 
         rootView.browserView = browser.scrollView
         rootView.viewerView = viewer.view
@@ -53,6 +59,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         rootView.showsSortBar = Preferences.showSortBar
         viewer.view.isHidden = true
         emptyState.show(.welcome)
+        emptyState.onOpen = { [weak self] url in self?.open(url) }
 
         browser.delegate = self
         viewer.delegate = self
@@ -86,7 +93,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         let isDirectory = (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
         let folder = isDirectory ? url : url.deletingLastPathComponent()
         onOpenedURL?(url)
-        NSDocumentController.shared.noteNewRecentDocumentURL(url)
+        Preferences.noteRecent(url)
         if mode == .viewer { closeViewer(animated: false) }
         searchItem?.searchField.stringValue = ""
         model.searchText = ""
@@ -106,7 +113,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
     private func modelChanged(_ change: FolderModel.Change) {
         browser.reload()
         if model.isLoading {
-            emptyState.show(.loading)
+            emptyState.show(.loading(folder: model.folder?.lastPathComponent ?? ""))
         } else if model.folder == nil {
             emptyState.show(.welcome)
         } else if model.folders.isEmpty && model.media.isEmpty {
@@ -165,8 +172,25 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
     /// The picture flies between its grid tile and its fitted place in the viewer while the
     /// viewer's backdrop fades. The flying layer starts from the bitmap already on screen,
     /// so the first frame is immediate.
-    private func runTransition(contents: Any, from start: NSRect, to end: NSRect, appearing: Bool, completion: @escaping () -> Void) {
+    private func runTransition(contents: Any, from start: NSRect, to end: NSRect, appearing: Bool, completion: @escaping @MainActor () -> Void) {
         guard let rootLayer = rootView.layer else { return completion() }
+        if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+            // Reduce Motion: a short cross-fade instead of the flight.
+            isTransitioning = true
+            viewer.view.alphaValue = appearing ? 0 : 1
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.18
+                viewer.view.animator().alphaValue = appearing ? 1 : 0
+            } completionHandler: { [weak self] in
+                MainActor.assumeIsolated {
+                    guard let self else { return }
+                    self.viewer.view.alphaValue = 1
+                    completion()
+                    self.isTransitioning = false
+                }
+            }
+            return
+        }
         isTransitioning = true
         let flyer = CALayer()
         flyer.contents = contents
@@ -214,12 +238,15 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
             if model.isLoading {
                 window.subtitle = String(localized: "Loading…")
             } else if model.folder != nil {
-                let count = model.media.count
-                var subtitle = String(localized: "\(count) items")
-                if model.isFiltered { subtitle += String(localized: " · filtered") }
-                let selected = browser.collectionView.selectionIndexPaths.count
-                if selected > 1 { subtitle += String(localized: " · \(selected) selected") }
-                window.subtitle = subtitle
+                var parts = [String(localized: "\(model.media.count) items")]
+                if model.isFiltered { parts.append(String(localized: "filtered")) }
+                if model.includesSubfolders { parts.append(String(localized: "with subfolders")) }
+                let selected = browser.selectedItems.filter(\.isMedia)
+                if selected.count > 1 {
+                    let bytes = Int64(selected.reduce(0) { $0 + $1.fileSize })
+                    parts.append(String(localized: "\(selected.count) selected, \(ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file))"))
+                }
+                window.subtitle = parts.joined(separator: "  ·  ")
             } else {
                 window.subtitle = ""
             }
@@ -279,7 +306,24 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         if copy { operations.copy(urls, into: folder) } else { operations.move(urls, into: folder) }
         sortBar.flash(slot)
         if mode == .viewer {
-            viewer.view.flashMessage((copy ? "⧉ " : "→ ") + "\(slot + 1)  \(folder.lastPathComponent)")
+            let name = folder.lastPathComponent
+            viewer.view.flashMessage(copy ? String(localized: "Copied to \(name)") : String(localized: "Moved to \(name)"))
+        }
+    }
+
+    /// Move To / Copy To ▸ Other Folder…: any folder, chosen each time.
+    @objc func moveToOtherFolder(_ sender: NSMenuItem) {
+        let urls = targetURLs()
+        guard !urls.isEmpty, let window else { return NSSound.beep() }
+        let copy = sender.tag == 1
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.canCreateDirectories = true
+        panel.prompt = copy ? String(localized: "Copy") : String(localized: "Move")
+        Task {
+            guard await panel.beginSheetModal(for: window) == .OK, let folder = panel.url else { return }
+            if copy { operations.copy(urls, into: folder) } else { operations.move(urls, into: folder) }
         }
     }
 
@@ -295,7 +339,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         let urls = targetURLs(includingFolders: true)
         guard !urls.isEmpty else { return NSSound.beep() }
         operations.trash(urls)
-        if mode == .viewer { viewer.view.flashMessage(String(localized: "Moved to Trash")) }
+        if mode == .viewer { viewer.view.flashMessage(String(localized: "Moved to the Trash")) }
     }
 
     @objc func renameItem(_ sender: Any?) {
@@ -323,13 +367,59 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         }
     }
 
-    @objc func rotateLeft(_ sender: Any?) { rotate(clockwise: false) }
-    @objc func rotateRight(_ sender: Any?) { rotate(clockwise: true) }
+    @objc func rotateLeft(_ sender: Any?) { transform(.rotateLeft) }
+    @objc func rotateRight(_ sender: Any?) { transform(.rotateRight) }
+    @objc func rotate180(_ sender: Any?) { transform(.rotate180) }
+    @objc func flipHorizontal(_ sender: Any?) { transform(.flipHorizontal) }
+    @objc func flipVertical(_ sender: Any?) { transform(.flipVertical) }
 
-    private func rotate(clockwise: Bool) {
+    private func transform(_ transform: ImageRotator.Transform) {
         let urls = targetURLs().filter { model.item(for: $0)?.kind == .image }
         guard !urls.isEmpty else { return NSSound.beep() }
-        operations.rotate(urls, clockwise: clockwise)
+        operations.transform(urls, transform)
+    }
+
+    @objc func setDesktopPicture(_ sender: Any?) {
+        guard let url = targetURLs().first(where: { model.item(for: $0)?.kind == .image }),
+              let screen = window?.screen ?? NSScreen.main else { return NSSound.beep() }
+        do {
+            try NSWorkspace.shared.setDesktopImageURL(url, for: screen, options: [:])
+            if mode == .viewer { viewer.view.flashMessage(String(localized: "Set as desktop picture")) }
+        } catch {
+            presentError(error.localizedDescription)
+        }
+    }
+
+    @objc func share(_ sender: Any?) {
+        let urls = targetURLs()
+        guard !urls.isEmpty, let contentView = window?.contentView, let window else { return NSSound.beep() }
+        let point = contentView.convert(window.mouseLocationOutsideOfEventStream, from: nil)
+        NSSharingServicePicker(items: urls).show(relativeTo: NSRect(origin: point, size: .zero), of: contentView, preferredEdge: .minY)
+    }
+
+    /// File ▸ Open With: the apps that can open the first target, default first.
+    func openWithMenu() -> NSMenu {
+        let menu = NSMenu()
+        guard let url = targetURLs().first else { return menu }
+        let apps = NSWorkspace.shared.urlsForApplications(toOpen: url)
+        let preferred = NSWorkspace.shared.urlForApplication(toOpen: url)
+        for app in apps.prefix(20) {
+            var title = FileManager.default.displayName(atPath: app.path)
+            if app == preferred { title += String(localized: " (default)") }
+            let item = menu.addItem(withTitle: title, action: #selector(openWithApp(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = app
+            let icon = NSWorkspace.shared.icon(forFile: app.path)
+            icon.size = NSSize(width: 16, height: 16)
+            item.image = icon
+            if app == preferred, apps.count > 1 { menu.addItem(.separator()) }
+        }
+        return menu
+    }
+
+    @objc private func openWithApp(_ sender: NSMenuItem) {
+        guard let app = sender.representedObject as? URL else { return }
+        NSWorkspace.shared.open(targetURLs(), withApplicationAt: app, configuration: NSWorkspace.OpenConfiguration())
     }
 
     @objc func toggleTag(_ sender: NSMenuItem) {
@@ -340,7 +430,8 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         operations.toggleTag(tags[sender.tag].name, on: urls)
         if mode == .viewer, let item = viewer.currentItem {
             let has = item.tags.contains(tags[sender.tag].name)
-            viewer.view.flashMessage((has ? "● " : "○ ") + tags[sender.tag].name)
+            let name = tags[sender.tag].name
+            viewer.view.flashMessage(has ? String(localized: "Added tag \(name)") : String(localized: "Removed tag \(name)"))
         }
     }
 
@@ -362,6 +453,10 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
 
     @objc override func selectAll(_ sender: Any?) {
         if mode == .browser { browser.selectAll() }
+    }
+
+    @objc func selectNone(_ sender: Any?) {
+        if mode == .browser { browser.collectionView.deselectAll(nil) }
     }
 
     @objc func openWithDefaultApp(_ sender: Any?) {
@@ -389,6 +484,39 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
             }
         }
     }
+
+    /// Go ▸ Home / Desktop / Pictures / volumes: `representedObject` is the folder.
+    @objc func goToPlace(_ sender: NSMenuItem) {
+        if let url = sender.representedObject as? URL { open(url) }
+    }
+
+    @objc func goToFolder(_ sender: Any?) {
+        guard let window else { return }
+        let alert = NSAlert()
+        alert.messageText = String(localized: "Go to the folder")
+        alert.addButton(withTitle: String(localized: "Go"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
+        let field = NSTextField(string: (model.folder?.path as NSString?)?.abbreviatingWithTildeInPath ?? "~/")
+        field.frame = NSRect(x: 0, y: 0, width: 360, height: 24)
+        field.placeholderString = "~/Pictures"
+        alert.accessoryView = field
+        alert.window.initialFirstResponder = field
+        alert.beginSheetModal(for: window) { [weak self] response in
+            MainActor.assumeIsolated {
+                guard response == .alertFirstButtonReturn else { return }
+                let path = (field.stringValue.trimmingCharacters(in: .whitespaces) as NSString).expandingTildeInPath
+                var isDirectory: ObjCBool = false
+                guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory) else {
+                    self?.presentError(String(localized: "There is no folder at “\(path)”."))
+                    return
+                }
+                self?.open(URL(fileURLWithPath: path))
+            }
+        }
+    }
+
+    @objc func newWindow(_ sender: Any?) { onNewWindow?(self, false) }
+    @objc func newTab(_ sender: Any?) { onNewWindow?(self, true) }
 
     @objc func nextImage(_ sender: Any?) { if mode == .viewer { viewer.navigate(.next) } }
     @objc func previousImage(_ sender: Any?) { if mode == .viewer { viewer.navigate(.previous) } }
@@ -441,6 +569,41 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         model.tagFilter = tags.indices.contains(sender.tag) ? tags[sender.tag].name : nil
     }
 
+    @objc func toggleSubfolders(_ sender: Any?) {
+        if mode == .viewer { closeViewer(animated: false) }
+        model.includesSubfolders.toggle()
+    }
+
+    @objc func toggleUpscale(_ sender: Any?) {
+        Preferences.upscaleSmallImages.toggle()
+        viewer.view.needsLayout = true
+        if mode == .viewer { viewer.zoomToFit() }
+    }
+
+    @objc func toggleActualSize(_ sender: Any?) {
+        Preferences.showsLargeImagesAtActualSize.toggle()
+        if mode == .viewer { viewer.reloadCurrent() }
+    }
+
+    @objc func toggleKeepZoom(_ sender: Any?) {
+        Preferences.keepsZoomWhenPaging.toggle()
+    }
+
+    @objc func toggleInfoOverlay(_ sender: Any?) {
+        viewer.cycleInfo()
+    }
+
+    @objc func toggleLoop(_ sender: Any?) { Preferences.slideshowLoops.toggle() }
+    @objc func toggleShuffle(_ sender: Any?) { Preferences.slideshowShuffles.toggle() }
+
+    @objc func showShortcuts(_ sender: Any?) {
+        if mode == .viewer {
+            viewer.view.toggleShortcuts()
+        } else {
+            SettingsWindowController.shared.show(tab: .shortcuts)
+        }
+    }
+
     @objc func toggleFileNames(_ sender: Any?) {
         UserDefaults.standard.set(!Preferences.showFileNames, forKey: Preferences.Key.showFileNames)
     }
@@ -459,20 +622,26 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         searchItem?.beginSearchInteraction()
     }
 
+    /// Phoenix Slides' rules: nothing selected plays everything from the start, one image plays
+    /// everything from there, several play just those. ⌥ (or the menu item) stays in the window.
     @objc func toggleSlideshow(_ sender: Any?) {
         if viewer.isSlideshowRunning {
             viewer.stopSlideshow()
             return
         }
+        guard !model.media.isEmpty else { return NSSound.beep() }
+        var selection: [URL]?
         if mode == .browser {
-            guard !model.media.isEmpty else { return NSSound.beep() }
-            openViewer(at: browser.selectedMediaIndices.first ?? 0, animated: false)
+            let selected = browser.selectedMediaIndices
+            selection = selected.count > 1 ? selected.map { model.media[$0].url } : nil
+            openViewer(at: selected.first ?? 0, animated: false)
         }
-        if window?.styleMask.contains(.fullScreen) == false {
+        let inWindow = (sender as? NSMenuItem)?.tag == 1 || NSEvent.modifierFlags.contains(.option)
+        if !inWindow, window?.styleMask.contains(.fullScreen) == false {
             enteredFullScreenForSlideshow = true
             window?.toggleFullScreen(nil)
         }
-        viewer.startSlideshow()
+        viewer.startSlideshow(only: selection)
     }
 
     @objc private func preferencesChanged() {
@@ -508,8 +677,33 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
             return hasTargets
         case #selector(renameItem(_:)):
             return targetURLs(includingFolders: true).count == 1
-        case #selector(rotateLeft(_:)), #selector(rotateRight(_:)):
+        case #selector(rotateLeft(_:)), #selector(rotateRight(_:)), #selector(rotate180(_:)),
+             #selector(flipHorizontal(_:)), #selector(flipVertical(_:)), #selector(setDesktopPicture(_:)):
             return targetURLs().contains { model.item(for: $0)?.kind == .image }
+        case #selector(moveToOtherFolder(_:)), #selector(share(_:)):
+            return !targetURLs().isEmpty
+        case #selector(selectNone(_:)):
+            return mode == .browser && !browser.collectionView.selectionIndexPaths.isEmpty
+        case #selector(toggleSubfolders(_:)):
+            item.state = model.includesSubfolders ? .on : .off
+            return model.folder != nil
+        case #selector(toggleUpscale(_:)):
+            item.state = Preferences.upscaleSmallImages ? .on : .off
+            return true
+        case #selector(toggleActualSize(_:)):
+            item.state = Preferences.showsLargeImagesAtActualSize ? .on : .off
+            return true
+        case #selector(toggleKeepZoom(_:)):
+            item.state = Preferences.keepsZoomWhenPaging ? .on : .off
+            return true
+        case #selector(toggleLoop(_:)):
+            item.state = Preferences.slideshowLoops ? .on : .off
+            return true
+        case #selector(toggleShuffle(_:)):
+            item.state = Preferences.slideshowShuffles ? .on : .off
+            return true
+        case #selector(toggleInfoOverlay(_:)):
+            return mode == .viewer
         case #selector(toggleTag(_:)):
             let tags = FinderTags.all
             guard tags.indices.contains(item.tag) else { return false }
@@ -557,8 +751,10 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
             item.title = inspector.isVisible ? String(localized: "Hide Info") : String(localized: "Show Info")
             return true
         case #selector(toggleSlideshow(_:)):
-            item.title = viewer.isSlideshowRunning ? String(localized: "Stop Slideshow") : String(localized: "Start Slideshow")
-            return !model.media.isEmpty
+            if item.tag == 0 {
+                item.title = viewer.isSlideshowRunning ? String(localized: "Stop Slideshow") : String(localized: "Start Slideshow")
+            }
+            return !model.media.isEmpty && (item.tag == 0 || !viewer.isSlideshowRunning)
         case #selector(goBack(_:)):
             return mode == .viewer || model.folder.map { $0.path != "/" } == true
         default:
@@ -570,6 +766,16 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
 
     func windowWillReturnUndoManager(_ window: NSWindow) -> UndoManager? {
         operations.undoManager
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        viewer.deactivate()
+        onClose?(self)
+    }
+
+    func windowDidBecomeKey(_ notification: Notification) {
+        // Only the top folder is watched; with subfolders included, catch up on return.
+        if model.includesSubfolders { model.scheduleRefresh() }
     }
 
     func windowWillEnterFullScreen(_ notification: Notification) {
@@ -613,7 +819,13 @@ extension MainWindowController: BrowserControllerDelegate {
             menu.addItem(withTitle: String(localized: "Open in Viewer"), action: #selector(showViewerOrGrid(_:)), keyEquivalent: "")
             menu.addItem(withTitle: String(localized: "Open with Default App"), action: #selector(openWithDefaultApp(_:)), keyEquivalent: "")
         }
+        if hasMedia {
+            menu.addItem(withTitle: String(localized: "Open With"), action: nil, keyEquivalent: "").submenu = openWithMenu()
+        }
         menu.addItem(withTitle: String(localized: "Show in Finder"), action: #selector(revealInFinder(_:)), keyEquivalent: "")
+        if hasMedia {
+            menu.addItem(withTitle: String(localized: "Share…"), action: #selector(share(_:)), keyEquivalent: "")
+        }
         menu.addItem(.separator())
         if hasMedia {
             let sortMenu = NSMenu()
@@ -621,6 +833,8 @@ extension MainWindowController: BrowserControllerDelegate {
                 let item = sortMenu.addItem(withTitle: "", action: #selector(sortToTarget(_:)), keyEquivalent: "")
                 item.tag = slot
             }
+            sortMenu.addItem(.separator())
+            sortMenu.addItem(withTitle: String(localized: "Other Folder…"), action: #selector(moveToOtherFolder(_:)), keyEquivalent: "").tag = 0
             menu.addItem(withTitle: String(localized: "Move To"), action: nil, keyEquivalent: "").submenu = sortMenu
             menu.addItem(withTitle: String(localized: "Rotate Left"), action: #selector(rotateLeft(_:)), keyEquivalent: "")
             menu.addItem(withTitle: String(localized: "Rotate Right"), action: #selector(rotateRight(_:)), keyEquivalent: "")
@@ -680,12 +894,19 @@ extension NSToolbarItem.Identifier {
     static let filter = Self("filter")
     static let slideshow = Self("slideshow")
     static let info = Self("info")
+    static let share = Self("share")
     static let search = Self("search")
+}
+
+extension MainWindowController: NSSharingServicePickerToolbarItemDelegate {
+    func items(for pickerToolbarItem: NSSharingServicePickerToolbarItem) -> [Any] {
+        targetURLs()
+    }
 }
 
 extension MainWindowController: NSToolbarDelegate, NSSearchFieldDelegate {
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [.back, .flexibleSpace, .thumbnailSize, .sortOrder, .filter, .slideshow, .info, .search]
+        [.back, .flexibleSpace, .thumbnailSize, .sortOrder, .filter, .share, .slideshow, .info, .search]
     }
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
@@ -728,6 +949,11 @@ extension MainWindowController: NSToolbarDelegate, NSSearchFieldDelegate {
             return item
         case .slideshow:
             return button(identifier, String(localized: "Slideshow"), "play", #selector(toggleSlideshow(_:)))
+        case .share:
+            let item = NSSharingServicePickerToolbarItem(itemIdentifier: identifier)
+            item.label = String(localized: "Share")
+            item.delegate = self
+            return item
         case .info:
             return button(identifier, String(localized: "Info"), "info.circle", #selector(toggleInspector(_:)))
         case .search:
@@ -798,7 +1024,7 @@ final class RootView: NSView {
 
     override func layout() {
         super.layout()
-        let barHeight: CGFloat = showsSortBar ? 38 : 0
+        let barHeight: CGFloat = showsSortBar ? SortBarView.height : 0
         sortBar?.isHidden = !showsSortBar
         sortBar?.frame = NSRect(x: 0, y: 0, width: bounds.width, height: barHeight)
         let content = NSRect(x: 0, y: barHeight, width: bounds.width, height: bounds.height - barHeight)

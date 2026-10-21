@@ -142,6 +142,17 @@ enum MetadataReader {
         return sections.filter { !$0.rows.isEmpty }
     }
 
+    /// One line for the viewer's info overlay: camera, lens and exposure.
+    static func summary(for item: Item) async -> String {
+        guard item.kind == .image else { return "" }
+        return await Task.detached(priority: .userInitiated) {
+            let sections = imageSections(item.url)
+            let camera = sections.first { $0.title == String(localized: "Camera") }?.rows ?? []
+            let taken = sections.first { $0.title == String(localized: "Image") }?.rows.first { $0.label == String(localized: "Taken") }
+            return (camera.map(\.value) + [taken?.value].compactMap { $0 }).joined(separator: "   ")
+        }.value
+    }
+
     private static func fileSection(_ item: Item) -> InspectorSection {
         let date = DateFormatter()
         date.dateStyle = .medium

@@ -4,18 +4,19 @@ import os
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    private var main: MainWindowController?
+    private var windows: [MainWindowController] = []
     private var benchmark: Benchmark?
     private var selfTest: SelfTest?
     private var openedByEvent = false
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         Preferences.register()
+        Preferences.applyAppearance()
         NSApp.mainMenu = MainMenu.make()
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        let main = ensureMain()
+        let main = frontWindow()
         main.showWindow(nil)
         let launchMs = ProcessMetrics.millisecondsSinceProcessStart()
         Log.app.info("Window up \(launchMs, format: .fixed(precision: 1)) ms after process start")
@@ -36,17 +37,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func application(_ application: NSApplication, open urls: [URL]) {
         guard let url = urls.first else { return }
         openedByEvent = true
-        let main = ensureMain()
+        let main = frontWindow()
         main.showWindow(nil)
         main.open(url)
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag { frontWindow().showWindow(nil) }
+        return true
+    }
+
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool { true }
 
     @objc func openDocument(_ sender: Any?) {
-        let main = ensureMain()
+        let main = frontWindow()
         main.showWindow(nil)
         guard let window = main.window else { return }
 
@@ -62,16 +68,47 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    @objc func showSettings(_ sender: Any?) {
-        SettingsWindowController.shared.showWindow(nil)
+    @objc func openRecent(_ sender: NSMenuItem) {
+        guard let url = sender.representedObject as? URL else { return }
+        let main = frontWindow()
+        main.showWindow(nil)
+        main.open(url)
     }
 
-    private func ensureMain() -> MainWindowController {
-        if let main { return main }
-        let main = MainWindowController()
-        main.onOpenedURL = { url in Preferences.lastOpenedPath = url.path }
-        self.main = main
-        return main
+    @objc func clearRecents(_ sender: Any?) {
+        Preferences.clearRecents()
+    }
+
+    @objc func showSettings(_ sender: Any?) {
+        SettingsWindowController.shared.show(tab: .general)
+    }
+
+    /// The window commands should go to: the key one, else the first, else a new one.
+    private func frontWindow() -> MainWindowController {
+        if let key = NSApp.keyWindow?.windowController as? MainWindowController { return key }
+        return windows.first ?? makeWindow(restoresFrame: true)
+    }
+
+    private func makeWindow(restoresFrame: Bool) -> MainWindowController {
+        let controller = MainWindowController(restoresFrame: restoresFrame)
+        controller.onOpenedURL = { url in Preferences.lastOpenedPath = url.path }
+        controller.onClose = { [weak self] closed in self?.windows.removeAll { $0 === closed } }
+        controller.onNewWindow = { [weak self] source, asTab in self?.newWindow(from: source, asTab: asTab) }
+        windows.append(controller)
+        return controller
+    }
+
+    /// ⌘N / ⌘T: another window (or tab) on the same folder, so two folders can be sorted side by side.
+    private func newWindow(from source: MainWindowController, asTab: Bool) {
+        let controller = makeWindow(restoresFrame: false)
+        guard let window = controller.window, let sourceWindow = source.window else { return }
+        if asTab {
+            sourceWindow.addTabbedWindow(window, ordered: .above)
+        } else {
+            window.setFrame(sourceWindow.frame.offsetBy(dx: 28, dy: -28), display: false)
+        }
+        controller.showWindow(nil)
+        if let folder = source.model.folder { controller.open(folder) }
     }
 
     /// A path passed on the command line wins; otherwise reopen where the user left off.

@@ -15,6 +15,14 @@ enum Preferences {
         static let numberKeysCopy = "NumberKeysCopy"
         static let showSortBar = "ShowSortBar"
         static let sortTargets = "SortTargets"
+        static let includesSubfolders = "IncludesSubfolders"
+        static let movesCompanions = "MovesCompanions"
+        static let showsLargeImagesAtActualSize = "ShowsLargeImagesAtActualSize"
+        static let keepsZoomWhenPaging = "KeepsZoomWhenPaging"
+        static let slideshowShuffles = "SlideshowShuffles"
+        static let appearance = "Appearance"
+        static let infoOverlay = "InfoOverlay"
+        static let recentPaths = "RecentPaths"
     }
 
     private static var defaults: UserDefaults { .standard }
@@ -30,6 +38,13 @@ enum Preferences {
             Key.slideshowLoops: true,
             Key.numberKeysCopy: false,
             Key.showSortBar: true,
+            Key.includesSubfolders: false,
+            Key.movesCompanions: true,
+            Key.showsLargeImagesAtActualSize: false,
+            Key.keepsZoomWhenPaging: false,
+            Key.slideshowShuffles: false,
+            Key.appearance: "system",
+            Key.infoOverlay: 0,
         ])
     }
 
@@ -50,9 +65,68 @@ enum Preferences {
         get { defaults.bool(forKey: Key.sortAscending) }
         set { defaults.set(newValue, forKey: Key.sortAscending) }
     }
-    static var upscaleSmallImages: Bool { defaults.bool(forKey: Key.upscaleSmallImages) }
-    static var slideshowInterval: Double { max(1, defaults.double(forKey: Key.slideshowInterval)) }
-    static var slideshowLoops: Bool { defaults.bool(forKey: Key.slideshowLoops) }
+    static var upscaleSmallImages: Bool {
+        get { defaults.bool(forKey: Key.upscaleSmallImages) }
+        set { defaults.set(newValue, forKey: Key.upscaleSmallImages) }
+    }
+    static var showsLargeImagesAtActualSize: Bool {
+        get { defaults.bool(forKey: Key.showsLargeImagesAtActualSize) }
+        set { defaults.set(newValue, forKey: Key.showsLargeImagesAtActualSize) }
+    }
+    static var keepsZoomWhenPaging: Bool {
+        get { defaults.bool(forKey: Key.keepsZoomWhenPaging) }
+        set { defaults.set(newValue, forKey: Key.keepsZoomWhenPaging) }
+    }
+    static var includesSubfolders: Bool {
+        get { defaults.bool(forKey: Key.includesSubfolders) }
+        set { defaults.set(newValue, forKey: Key.includesSubfolders) }
+    }
+    static var movesCompanions: Bool { defaults.bool(forKey: Key.movesCompanions) }
+    static var slideshowShuffles: Bool {
+        get { defaults.bool(forKey: Key.slideshowShuffles) }
+        set { defaults.set(newValue, forKey: Key.slideshowShuffles) }
+    }
+    /// 0 off, 1 name and basics, 2 with camera details.
+    static var infoOverlay: Int {
+        get { defaults.integer(forKey: Key.infoOverlay) }
+        set { defaults.set(newValue, forKey: Key.infoOverlay) }
+    }
+    static var appearance: String { defaults.string(forKey: Key.appearance) ?? "system" }
+
+    /// Folders and files opened lately, newest first, for Open Recent and the welcome screen.
+    static var recentURLs: [URL] {
+        (defaults.stringArray(forKey: Key.recentPaths) ?? [])
+            .filter { FileManager.default.fileExists(atPath: $0) }
+            .map { URL(fileURLWithPath: $0) }
+    }
+
+    static func noteRecent(_ url: URL) {
+        var paths = defaults.stringArray(forKey: Key.recentPaths) ?? []
+        paths.removeAll { $0 == url.path }
+        paths.insert(url.path, at: 0)
+        defaults.set(Array(paths.prefix(12)), forKey: Key.recentPaths)
+    }
+
+    static func clearRecents() {
+        defaults.removeObject(forKey: Key.recentPaths)
+    }
+
+    @MainActor
+    static func applyAppearance() {
+        switch appearance {
+        case "light": NSApp.appearance = NSAppearance(named: .aqua)
+        case "dark": NSApp.appearance = NSAppearance(named: .darkAqua)
+        default: NSApp.appearance = nil
+        }
+    }
+    static var slideshowInterval: Double {
+        get { max(0.5, defaults.double(forKey: Key.slideshowInterval)) }
+        set { defaults.set(min(max(newValue, 0.5), 60), forKey: Key.slideshowInterval) }
+    }
+    static var slideshowLoops: Bool {
+        get { defaults.bool(forKey: Key.slideshowLoops) }
+        set { defaults.set(newValue, forKey: Key.slideshowLoops) }
+    }
     static var numberKeysCopy: Bool { defaults.bool(forKey: Key.numberKeysCopy) }
     static var showSortBar: Bool {
         get { defaults.bool(forKey: Key.showSortBar) }

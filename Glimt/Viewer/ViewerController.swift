@@ -38,6 +38,10 @@ final class ViewerController: NSObject {
     private var slideshowTask: Task<Void, Never>?
     private(set) var isSlideshowPaused = false
     var isSlideshowRunning: Bool { slideshowTask != nil }
+    /// During a slideshow of a selection, or a shuffled one: the order to play, by URL.
+    private var playlist: [URL]?
+    private var playlistItems: [Item] = []
+    private var infoDetails: [URL: String] = [:]
 
     init(model: FolderModel) {
         self.model = model
@@ -47,7 +51,7 @@ final class ViewerController: NSObject {
         model.observe { [weak self] change in self?.modelChanged(change) }
     }
 
-    var items: [Item] { model.media }
+    var items: [Item] { playlist == nil ? model.media : playlistItems }
     var currentItem: Item? { items.indices.contains(index) ? items[index] : nil }
 
     // MARK: - Activation
@@ -85,7 +89,11 @@ final class ViewerController: NSObject {
     }
 
     private func modelChanged(_ change: FolderModel.Change) {
-        if case .renamed(let from, let to) = change, from == currentURL { currentURL = to }
+        if case .renamed(let from, let to) = change {
+            if from == currentURL { currentURL = to }
+            playlist = playlist?.map { $0 == from ? to : $0 }
+        }
+        rebuildPlaylist()
         guard isActive else { return }
         if items.isEmpty {
             delegate?.viewerControllerWantsClose(self)
@@ -105,21 +113,24 @@ final class ViewerController: NSObject {
 
     func navigate(_ navigation: Navigation) {
         guard isActive, !items.isEmpty else { return }
-        let target: Int
+        var target: Int
+        var forward = true
         switch navigation {
         case .next: target = index + 1
-        case .previous: target = index - 1
-        case .first: target = 0
+        case .previous: target = index - 1; forward = false
+        case .first: target = 0; forward = false
         case .last: target = items.count - 1
+        case .jump(let offset): target = min(max(index + offset, 0), items.count - 1); forward = offset > 0
         }
         guard items.indices.contains(target), target != index else {
-            if isSlideshowRunning, navigation == .next, Preferences.slideshowLoops {
+            if isSlideshowRunning, forward, Preferences.slideshowLoops {
+                if Preferences.slideshowShuffles { reshuffle() }
                 return go(to: 0)
             }
-            view.flashMessage(navigation == .next || navigation == .last
-                ? String(localized: "Last image") : String(localized: "First image"))
+            view.flashMessage(forward ? String(localized: "This is the last one") : String(localized: "This is the first one"))
             return
         }
+        target = min(max(target, 0), items.count - 1)
         go(to: target)
     }
 
@@ -145,6 +156,7 @@ final class ViewerController: NSObject {
             shown = nil
             view.showVideo(url)
             delegate?.viewerController(self, didShow: item)
+            updateInfo()
             scheduleDecodes()
             return
         }
@@ -249,6 +261,7 @@ final class ViewerController: NSObject {
         }
         if isNewImage {
             if let item = currentItem { delegate?.viewerController(self, didShow: item) }
+            updateInfo()
             if let pageTurn {
                 Signposts.signposter.endInterval("Page Turn", pageTurn)
                 self.pageTurn = nil
@@ -280,16 +293,56 @@ final class ViewerController: NSObject {
     func zoomToActualSize() { view.zoomToActualSize() }
     func zoomToFit() { view.zoomToFit() }
 
+    // MARK: - Info overlay
+
+    private func updateInfo() {
+        let level = Preferences.infoOverlay
+        guard level > 0, let item = currentItem else { return view.setInfo(nil) }
+        var facts = ["\(index + 1) / \(items.count)"]
+        if let shown, shown.url == item.url {
+            facts.append("\(Int(shown.sourceSize.width)) × \(Int(shown.sourceSize.height))")
+        }
+        facts.append(ByteCountFormatter.string(fromByteCount: Int64(item.fileSize), countStyle: .file))
+        var lines = [item.name, facts.joined(separator: "   ")]
+        if level > 1 {
+            if let details = infoDetails[item.url] {
+                if !details.isEmpty { lines.append(details) }
+            } else {
+                Task {
+                    let details = await MetadataReader.summary(for: item)
+                    self.infoDetails[item.url] = details
+                    if self.currentURL == item.url { self.updateInfo() }
+                }
+            }
+        }
+        view.setInfo(lines)
+    }
+
     // MARK: - Slideshow
 
-    func startSlideshow() {
-        guard !items.isEmpty else { return }
+    /// Phoenix Slides' rule: with several images selected, play just those.
+    func startSlideshow(only selection: [URL]? = nil) {
         stopSlideshow()
+        if let selection, selection.count > 1 {
+            playlist = selection
+        } else if Preferences.slideshowShuffles {
+            playlist = model.media.map(\.url)
+        }
+        if Preferences.slideshowShuffles { reshuffle() }
+        rebuildPlaylist()
+        guard !items.isEmpty else { return }
+        if let url = currentURL, let found = items.firstIndex(where: { $0.url == url }) {
+            index = found
+        } else {
+            index = 0
+            currentURL = items[0].url
+            showCurrent()
+        }
         isSlideshowPaused = false
-        view.flashMessage(String(localized: "Slideshow · \(Int(Preferences.slideshowInterval)) s"))
+        announceInterval()
         slideshowTask = Task { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(Preferences.slideshowInterval))
+                try? await Task.sleep(for: .milliseconds(Int(Preferences.slideshowInterval * 1000)))
                 guard let self, !Task.isCancelled else { return }
                 if self.isSlideshowPaused || self.view.isLiveMagnifying { continue }
                 if self.index + 1 >= self.items.count && !Preferences.slideshowLoops {
@@ -306,12 +359,45 @@ final class ViewerController: NSObject {
         guard let task = slideshowTask else { return }
         task.cancel()
         slideshowTask = nil
+        playlist = nil
+        rebuildPlaylist()
+        if let url = currentURL, let found = items.firstIndex(where: { $0.url == url }) { index = found }
         delegate?.viewerController(self, slideshowDidChange: false)
+    }
+
+    /// Keeps the playing item first so shuffling never jumps away from what is on screen.
+    private func reshuffle() {
+        guard var order = playlist else { return }
+        order.shuffle()
+        if let url = currentURL, let position = order.firstIndex(of: url) { order.swapAt(0, position) }
+        playlist = order
+        rebuildPlaylist()
+        index = 0
+    }
+
+    private func rebuildPlaylist() {
+        guard let playlist else {
+            playlistItems = []
+            return
+        }
+        let byURL = Dictionary(model.media.map { ($0.url, $0) }, uniquingKeysWith: { a, _ in a })
+        playlistItems = playlist.compactMap { byURL[$0] }
+    }
+
+    private func announceInterval() {
+        let seconds = Preferences.slideshowInterval
+        let text = seconds < 1 ? String(format: "%.1f", seconds) : "\(Int(seconds))"
+        view.flashMessage(String(localized: "Slideshow, \(text) s per image"))
     }
 
     func toggleSlideshowPause() {
         isSlideshowPaused.toggle()
         view.flashMessage(isSlideshowPaused ? String(localized: "Paused") : String(localized: "Playing"))
+    }
+
+    func cycleInfo() {
+        Preferences.infoOverlay = (Preferences.infoOverlay + 1) % 3
+        updateInfo()
     }
 }
 
@@ -352,6 +438,18 @@ extension ViewerController: ViewerViewDelegate {
         } else {
             navigate(shift ? .previous : .next)
         }
+    }
+
+    func viewerCycleInfo(_ viewer: ViewerView) {
+        cycleInfo()
+    }
+
+    func viewer(_ viewer: ViewerView, adjustSlideshowFaster faster: Bool) {
+        let steps: [Double] = [0.5, 1, 1.5, 2, 3, 4, 5, 7, 10, 15, 20, 30]
+        let current = Preferences.slideshowInterval
+        let next = faster ? steps.last { $0 < current } ?? steps[0] : steps.first { $0 > current } ?? steps[steps.count - 1]
+        Preferences.slideshowInterval = next
+        announceInterval()
     }
 
     func viewerPressedEscape(_ viewer: ViewerView) -> Bool {

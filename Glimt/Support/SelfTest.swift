@@ -81,11 +81,20 @@ final class SelfTest {
         undo.undo()
         await until("undo rename") { self.exists(c) && !self.exists(renamed) }
 
-        step { operations.rotate([a], clockwise: true) }
+        step { operations.transform([a], .rotateRight) }
         await until("rotate right sets EXIF orientation 6") { self.orientation(a) == 6 }
         check("rotation keeps the pixels untouched (same size)", pixelSize(a) == CGSize(width: 64, height: 48))
         undo.undo()
         await until("undo rotate restores orientation 1") { self.orientation(a) == 1 }
+        step { operations.transform([a], .flipHorizontal) }
+        await until("flip horizontal sets orientation 2") { self.orientation(a) == 2 }
+        step { operations.transform([a], .rotateRight) }
+        await until("then rotate right gives orientation 7") { self.orientation(a) == 7 }
+        undo.undo()
+        undo.undo()
+        await until("undo both restores orientation 1") { self.orientation(a) == 1 }
+        check("orientation math: 180° from 6 is 8", ImageRotator.orientation(after: .rotate180, from: 6) == 8)
+        check("orientation math: flip vertical from 1 is 4", ImageRotator.orientation(after: .flipVertical, from: 1) == 4)
 
         await until("model has settled") { self.window.model.item(for: a) != nil }
         let red = FinderTags.all.first?.name ?? "Red"
@@ -98,6 +107,37 @@ final class SelfTest {
         check("search filters by name", window.model.media.map(\.name) == ["b.jpg"])
         window.model.searchText = ""
         check("clearing search shows all", window.model.media.count == 3)
+
+        // RAW+JPEG pairs and sidecars travel together.
+        let pairJPEG = photos.appendingPathComponent("pair.jpg")
+        let pairPNG = photos.appendingPathComponent("pair.png")
+        let sidecar = photos.appendingPathComponent("pair.xmp")
+        try? writeImage(pairJPEG)
+        try? writeImage(pairPNG)
+        try? Data("<x:xmpmeta/>".utf8).write(to: sidecar)
+        window.model.scheduleRefresh()
+        await until("pair appears in the model") { self.window.model.item(for: pairPNG) != nil }
+        step { operations.move([pairJPEG], into: keep) }
+        await until("moving one file of a pair moves its partner and sidecar") {
+            self.exists(self.keep.appendingPathComponent("pair.jpg")) && self.exists(self.keep.appendingPathComponent("pair.png"))
+                && self.exists(self.keep.appendingPathComponent("pair.xmp")) && !self.exists(pairPNG)
+        }
+        undo.undo()
+        await until("undo brings the whole pair back") { self.exists(pairJPEG) && self.exists(pairPNG) && self.exists(sidecar) }
+
+        // Subfolders.
+        let nested = photos.appendingPathComponent("nested/deeper")
+        try? FileManager.default.createDirectory(at: nested, withIntermediateDirectories: true)
+        try? writeImage(nested.appendingPathComponent("deep.jpg"))
+        window.model.includesSubfolders = true
+        await until("include subfolders finds nested images") { self.window.model.media.contains { $0.name == "deep.jpg" } }
+        check("include subfolders hides folder tiles", window.model.folders.isEmpty)
+        window.model.includesSubfolders = false
+        await until("turning it off goes back to this folder only") { !self.window.model.media.contains { $0.name == "deep.jpg" } && !self.window.model.folders.isEmpty }
+
+        window.model.sortKey = .kind
+        check("sort by kind puts JPEG before PNG", window.model.media.map(\.name).firstIndex(of: "a.jpg")! < window.model.media.map(\.name).firstIndex(of: "pair.png")!)
+        window.model.sortKey = .name
     }
 
     // MARK: - Helpers

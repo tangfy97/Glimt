@@ -111,7 +111,7 @@ final class BrowserController: NSObject, NSCollectionViewDataSource, NSCollectio
     }
 
     func thumbnail(for url: URL) -> Thumbnail? {
-        thumbnails.cached(url, pixels: 512)?.thumbnail
+        thumbnails.cached(url, pixels: pixelTier)?.thumbnail
     }
 
     // MARK: - Thumbnail size
@@ -121,7 +121,7 @@ final class BrowserController: NSObject, NSCollectionViewDataSource, NSCollectio
         set { setTileSide(newValue, anchor: nil) }
     }
 
-    static let tileRange: ClosedRange<CGFloat> = 72...360
+    static let tileRange: ClosedRange<CGFloat> = 56...480
 
     private var pixelTier: Int {
         ThumbnailStore.pixels(forPoints: layout.cellWidth, scale: collectionView.window?.backingScaleFactor ?? 2)

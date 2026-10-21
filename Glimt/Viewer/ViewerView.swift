@@ -3,6 +3,8 @@ import AVKit
 
 enum Navigation {
     case next, previous, first, last
+    /// Page Up / Page Down: ten at a time, as in Phoenix Slides.
+    case jump(Int)
 }
 
 @MainActor
@@ -16,6 +18,10 @@ protocol ViewerViewDelegate: AnyObject {
     func viewerPressedSpace(_ viewer: ViewerView, shift: Bool)
     /// Return false to let Escape fall through (e.g. to leave full screen).
     func viewerPressedEscape(_ viewer: ViewerView) -> Bool
+    /// `i`: off → name and basics → with camera details.
+    func viewerCycleInfo(_ viewer: ViewerView)
+    /// `[` / `]` during a slideshow.
+    func viewer(_ viewer: ViewerView, adjustSlideshowFaster faster: Bool)
 }
 
 /// Zoomable image (or video), overlays, keyboard and drop handling. It knows nothing about
@@ -27,7 +33,11 @@ final class ViewerView: NSView {
     private let canvas = ImageCanvasView()
     private let placeholder = PlaceholderView()
     private let hud = HUDView()
+    private let info = InfoOverlayView()
+    private let shortcuts = ShortcutSheetView()
     private let dropHighlight = DropHighlightView()
+    /// Hold Z for a 100% look at the pointer, release to come back; a quick tap stays zoomed.
+    private var loupeStarted: CFTimeInterval?
 
     private var sourceSize: CGSize = .zero
     private var contentsLongestSide = 0
@@ -71,6 +81,12 @@ final class ViewerView: NSView {
         addSubview(placeholder)
         hud.translatesAutoresizingMaskIntoConstraints = false
         addSubview(hud)
+        info.translatesAutoresizingMaskIntoConstraints = false
+        info.isHidden = true
+        addSubview(info)
+        shortcuts.translatesAutoresizingMaskIntoConstraints = false
+        shortcuts.isHidden = true
+        addSubview(shortcuts)
         dropHighlight.frame = bounds.insetBy(dx: 6, dy: 6)
         dropHighlight.autoresizingMask = [.width, .height]
         addSubview(dropHighlight)
@@ -82,13 +98,18 @@ final class ViewerView: NSView {
             placeholder.bottomAnchor.constraint(equalTo: bottomAnchor),
             hud.centerXAnchor.constraint(equalTo: centerXAnchor),
             hud.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -28),
+            info.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
+            info.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -16),
+            info.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -16),
+            shortcuts.centerXAnchor.constraint(equalTo: centerXAnchor),
+            shortcuts.centerYAnchor.constraint(equalTo: centerYAnchor),
         ])
 
         let center = NotificationCenter.default
         center.addObserver(self, selector: #selector(liveMagnifyWillStart(_:)), name: NSScrollView.willStartLiveMagnifyNotification, object: scrollView)
         center.addObserver(self, selector: #selector(liveMagnifyDidEnd(_:)), name: NSScrollView.didEndLiveMagnifyNotification, object: scrollView)
         registerForDraggedTypes([.fileURL])
-        placeholder.show(.welcome)
+        placeholder.isHidden = true
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
@@ -133,13 +154,27 @@ final class ViewerView: NSView {
         hideVideo()
         let sourceSize = image.sourceSize
         if resetZoom || sourceSize != self.sourceSize {
+            // Zoom lock: carry the zoom and the relative position over to the next image, so a
+            // burst can be checked for focus at the same spot.
+            let carried = resetZoom && Preferences.keepsZoomWhenPaging && hasImage && !isFitMode ? zoomState : nil
             zoomAnimation?.stop()
             zoomAnimation = nil
+            loupeStarted = nil
             self.sourceSize = sourceSize
             canvas.frame = CGRect(origin: .zero, size: sourceSize)
             isFitMode = true
             updateMagnificationLimits(refit: true)
             clipView.setBoundsOrigin(clipView.constrainBoundsRect(clipView.bounds).origin)
+            if let carried {
+                apply(carried)
+            } else if Preferences.showsLargeImagesAtActualSize, fitMagnification < 1 {
+                apply((relative: 1 / fitMagnification, center: CGPoint(x: 0.5, y: 0.5)))
+            }
+            if !isFitMode {
+                DispatchQueue.main.async { [weak self] in
+                    MainActor.assumeIsolated { if let self { self.delegate?.viewerWantsDetail(self) } }
+                }
+            }
         }
         canvas.setContents(image.surface)
         contentsLongestSide = image.longestSide
@@ -231,6 +266,39 @@ final class ViewerView: NSView {
         hud.flash(text)
     }
 
+    /// The `i` overlay; nil hides it.
+    func setInfo(_ lines: [String]?) {
+        guard let lines, !lines.isEmpty else {
+            info.isHidden = true
+            return
+        }
+        info.setLines(lines)
+        info.isHidden = false
+    }
+
+    func toggleShortcuts() {
+        shortcuts.isHidden.toggle()
+    }
+
+    private var zoomState: (relative: CGFloat, center: CGPoint) {
+        let center = visibleCenter
+        return (scrollView.magnification / fitMagnification,
+                CGPoint(x: center.x / sourceSize.width, y: center.y / sourceSize.height))
+    }
+
+    private func apply(_ state: (relative: CGFloat, center: CGPoint)) {
+        let fit = fitMagnification
+        let magnification = min(max(state.relative * fit, scrollView.minMagnification), scrollView.maxMagnification)
+        scrollView.magnification = magnification
+        var bounds = clipView.bounds
+        bounds.origin = CGPoint(x: state.center.x * sourceSize.width - bounds.width / 2,
+                                y: state.center.y * sourceSize.height - bounds.height / 2)
+        clipView.setBoundsOrigin(clipView.constrainBoundsRect(bounds).origin)
+        scrollView.reflectScrolledClipView(clipView)
+        isFitMode = abs(magnification - fit) <= fit * 0.001
+        updateFilter()
+    }
+
     // MARK: - Zoom
 
     var fitMagnification: CGFloat {
@@ -284,7 +352,8 @@ final class ViewerView: NSView {
         let target = min(max(magnification, scrollView.minMagnification), scrollView.maxMagnification)
         targetMagnification = target
         hud.flash(percentText(target))
-        if animated, abs(target - scrollView.magnification) > 0.0001 {
+        let animate = animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        if animate, abs(target - scrollView.magnification) > 0.0001 {
             zoomAnimation = MagnificationAnimation(scrollView: scrollView, to: target, around: point) { [weak self] in
                 self?.magnificationSettled()
             }
@@ -363,10 +432,14 @@ final class ViewerView: NSView {
               let scalar = event.charactersIgnoringModifiers?.unicodeScalars.first else { return false }
         let shift = event.modifierFlags.contains(.shift)
         switch Int(scalar.value) {
-        case NSRightArrowFunctionKey, NSPageDownFunctionKey:
+        case NSRightArrowFunctionKey:
             navigate(.next)
-        case NSLeftArrowFunctionKey, NSPageUpFunctionKey:
+        case NSLeftArrowFunctionKey:
             navigate(.previous)
+        case NSPageDownFunctionKey:
+            navigate(.jump(10))
+        case NSPageUpFunctionKey:
+            navigate(.jump(-10))
         case NSDownArrowFunctionKey:
             if isFitMode { navigate(.next) } else { pan(byFractionOfHeight: -0.2) }
         case NSUpArrowFunctionKey:
@@ -384,10 +457,45 @@ final class ViewerView: NSView {
             }
         case 0x66 where !shift: // f
             window?.toggleFullScreen(nil)
+        case 0x69 where !shift: // i
+            delegate?.viewerCycleInfo(self)
+        case 0x3F, 0x68: // ? h
+            toggleShortcuts()
+        case 0x5B, 0x5D: // [ ]
+            delegate?.viewer(self, adjustSlideshowFaster: scalar == "]")
+        case 0x7A where !shift: // z
+            if !event.isARepeat { beginLoupe() }
         default:
             return false
         }
         return true
+    }
+
+    private func beginLoupe() {
+        guard hasImage, loupeStarted == nil else { return }
+        if !isFitMode {
+            // A tap while zoomed in goes back to the whole picture.
+            zoomToFit()
+            return
+        }
+        loupeStarted = CACurrentMediaTime()
+        delegate?.viewerWantsDetail(self)
+        var point = visibleCenter
+        if let window {
+            let mouse = window.mouseLocationOutsideOfEventStream
+            if scrollView.frame.contains(convert(mouse, from: nil)) { point = clipView.convert(mouse, from: nil) }
+        }
+        let target = fitMagnification >= 1 ? fitMagnification * 2 : 1
+        setMagnification(target, around: point, animated: true)
+    }
+
+    override func keyUp(with event: NSEvent) {
+        guard event.charactersIgnoringModifiers == "z", let started = loupeStarted else {
+            return super.keyUp(with: event)
+        }
+        loupeStarted = nil
+        // Held: it was a peek, so return. Tapped: stay zoomed until the next tap.
+        if CACurrentMediaTime() - started > 0.3 { zoomToFit() }
     }
 
     private func pan(byFractionOfHeight fraction: CGFloat) {

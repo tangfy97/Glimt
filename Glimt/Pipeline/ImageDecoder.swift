@@ -2,6 +2,7 @@ import CoreGraphics
 import Foundation
 import ImageIO
 import IOSurface
+import UniformTypeIdentifiers
 
 /// How sharp a decode is. Each image climbs this ladder; the viewer always shows
 /// the best rung it has and never steps down while the same image is on screen.
@@ -79,12 +80,24 @@ enum ImageDecoder {
             kCGImageSourceShouldCacheImmediately: true,
             kCGImageSourceThumbnailMaxPixelSize: Int(max(target, 1)),
         ]
-        if level != .quick {
-            options[kCGImageSourceCreateThumbnailFromImageAlways] = true
+        var image: CGImage?
+        if level == .preview, isRaw(source) {
+            // Like Photo Mechanic: a RAW file's embedded JPEG preview is usually large enough for
+            // the screen and costs a fraction of demosaicing. The full rung still decodes the RAW.
+            image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
+            if let embedded = image, CGFloat(max(embedded.width, embedded.height)) < target * 0.6 { image = nil }
         }
-        guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary),
-              let surface = makeSurface(from: image) else { return nil }
+        if image == nil {
+            if level != .quick { options[kCGImageSourceCreateThumbnailFromImageAlways] = true }
+            image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
+        }
+        guard let image, let surface = makeSurface(from: image) else { return nil }
         return DecodedImage(surface: surface, sourceSize: size, frameCount: CGImageSourceGetCount(source))
+    }
+
+    private static func isRaw(_ source: CGImageSource) -> Bool {
+        guard let identifier = CGImageSourceGetType(source) as String?, let type = UTType(identifier) else { return false }
+        return type.conforms(to: .rawImage)
     }
 
     static func orientedSize(of source: CGImageSource) -> CGSize? {

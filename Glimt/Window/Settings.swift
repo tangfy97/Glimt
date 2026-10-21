@@ -1,12 +1,23 @@
 import AppKit
+import Observation
 import SwiftUI
 
 @MainActor
 final class SettingsWindowController: NSWindowController {
+    enum Tab: Hashable {
+        case general, sorting, shortcuts
+    }
+
+    @Observable
+    final class Navigation {
+        var tab = Tab.general
+    }
+
     static let shared = SettingsWindowController()
+    private let navigation = Navigation()
 
     private init() {
-        let hosting = NSHostingController(rootView: SettingsView())
+        let hosting = NSHostingController(rootView: SettingsView(navigation: navigation))
         let window = NSWindow(contentViewController: hosting)
         window.title = String(localized: "Settings")
         window.styleMask = [.titled, .closable]
@@ -16,14 +27,21 @@ final class SettingsWindowController: NSWindowController {
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
+    func show(tab: Tab) {
+        navigation.tab = tab
+        showWindow(nil)
+    }
 }
 
 struct SettingsView: View {
+    @Bindable var navigation: SettingsWindowController.Navigation
+
     var body: some View {
-        TabView {
-            GeneralSettings().tabItem { Label("General", systemImage: "gearshape") }
-            SortingSettings().tabItem { Label("Sorting", systemImage: "tray.2") }
-            ShortcutsSettings().tabItem { Label("Shortcuts", systemImage: "keyboard") }
+        TabView(selection: $navigation.tab) {
+            GeneralSettings().tabItem { Label("General", systemImage: "gearshape") }.tag(SettingsWindowController.Tab.general)
+            SortingSettings().tabItem { Label("Sorting", systemImage: "tray.2") }.tag(SettingsWindowController.Tab.sorting)
+            ShortcutsSettings().tabItem { Label("Shortcuts", systemImage: "keyboard") }.tag(SettingsWindowController.Tab.shortcuts)
         }
         .frame(width: 540)
         .fixedSize(horizontal: false, vertical: true)
@@ -31,24 +49,33 @@ struct SettingsView: View {
 }
 
 private struct GeneralSettings: View {
+    @AppStorage(Preferences.Key.appearance) private var appearance = "system"
     @AppStorage(Preferences.Key.showFileNames) private var showFileNames = true
     @AppStorage(Preferences.Key.upscaleSmallImages) private var upscaleSmallImages = false
+    @AppStorage(Preferences.Key.showsLargeImagesAtActualSize) private var actualSize = false
+    @AppStorage(Preferences.Key.keepsZoomWhenPaging) private var keepZoom = false
     @AppStorage(Preferences.Key.slideshowInterval) private var slideshowInterval = 4.0
     @AppStorage(Preferences.Key.slideshowLoops) private var slideshowLoops = true
-    @AppStorage(Preferences.Key.showSortBar) private var showSortBar = true
+    @AppStorage(Preferences.Key.slideshowShuffles) private var slideshowShuffles = false
     @State private var cacheSize: Int64?
 
     var body: some View {
         Form {
-            Section("Browsing") {
+            Section {
+                Picker("Appearance", selection: $appearance) {
+                    Text("Match the system").tag("system")
+                    Text("Light").tag("light")
+                    Text("Dark").tag("dark")
+                }
                 Toggle("Show file names under thumbnails", isOn: $showFileNames)
-                Toggle("Show the sort bar", isOn: $showSortBar)
             }
-            Section("Viewing") {
+            Section("Viewer") {
                 Toggle("Enlarge small images to fill the window", isOn: $upscaleSmallImages)
+                Toggle("Open large images at actual size", isOn: $actualSize)
+                Toggle("Keep the zoom when moving to the next image", isOn: $keepZoom)
             }
             Section("Slideshow") {
-                LabeledContent("Show each image for") {
+                LabeledContent("Each image for") {
                     HStack {
                         Slider(value: $slideshowInterval, in: 1...20, step: 1)
                             .frame(width: 180)
@@ -58,6 +85,7 @@ private struct GeneralSettings: View {
                     }
                 }
                 Toggle("Start over after the last image", isOn: $slideshowLoops)
+                Toggle("Shuffle", isOn: $slideshowShuffles)
             }
             Section("Thumbnail cache") {
                 LabeledContent("Size on disk") {
@@ -74,11 +102,13 @@ private struct GeneralSettings: View {
         }
         .formStyle(.grouped)
         .task { cacheSize = await ThumbnailStore.diskUsage() }
+        .onChange(of: appearance) { Preferences.applyAppearance() }
     }
 }
 
 private struct SortingSettings: View {
     @AppStorage(Preferences.Key.numberKeysCopy) private var numberKeysCopy = false
+    @AppStorage(Preferences.Key.movesCompanions) private var movesCompanions = true
     private let targets = SortTargets.shared
 
     var body: some View {
@@ -87,6 +117,10 @@ private struct SortingSettings: View {
                 Picker("Number keys", selection: $numberKeysCopy) {
                     Text("Move the file (⇧ copies)").tag(false)
                     Text("Copy the file (⇧ moves)").tag(true)
+                }
+                Toggle(isOn: $movesCompanions) {
+                    Text("Keep RAW+JPEG pairs together")
+                    Text("Files with the same name, Live Photo movies and .xmp sidecars move, copy, rename and go to the Trash together.")
                 }
             }
             Section("Folders") {
@@ -130,40 +164,13 @@ private struct SortingSettings: View {
 }
 
 private struct ShortcutsSettings: View {
-    private let groups: [(String, [(String, String)])] = [
-        ("Browse", [
-            ("← →  Space  ⇧Space", "Previous / next image"),
-            ("Home  End", "First / last image"),
-            ("Return  Double-click", "Open image"),
-            ("Esc", "Back to the grid"),
-            ("⌘↑", "Enclosing folder"),
-            ("⌘F", "Search file names"),
-        ]),
-        ("Sort", [
-            ("1 – 9", "Move to sort folder"),
-            ("⇧1 – ⇧9", "Copy to sort folder"),
-            ("⌥1 – ⌥9", "Choose the folder for a key"),
-            ("⌘⌫", "Move to Trash"),
-            ("⌃1 – ⌃7  ⌃0", "Toggle Finder tag / clear tags"),
-            ("⌘Z  ⇧⌘Z", "Undo / redo"),
-        ]),
-        ("View", [
-            ("Pinch  ⌘=  ⌘−", "Zoom (thumbnails in the grid)"),
-            ("Double-tap  ⌘0  ⌘9", "Smart zoom / actual size / fit"),
-            ("⌘L  ⌘R", "Rotate left / right (lossless)"),
-            ("F  ⌃⌘F", "Full screen"),
-            ("⌥⌘P", "Slideshow (Space pauses)"),
-            ("⌘I", "Info"),
-        ]),
-    ]
-
     var body: some View {
         Form {
-            ForEach(groups, id: \.0) { group in
-                Section(group.0) {
-                    ForEach(group.1, id: \.0) { shortcut in
-                        LabeledContent(shortcut.1) {
-                            Text(shortcut.0).font(.body.monospaced()).foregroundStyle(.secondary)
+            ForEach(Shortcuts.groups) { group in
+                Section(group.title) {
+                    ForEach(group.entries, id: \.keys) { entry in
+                        LabeledContent(entry.action) {
+                            Text(entry.keys).font(.body.monospaced()).foregroundStyle(.secondary)
                         }
                     }
                 }
