@@ -49,7 +49,12 @@ final class BrowserController: NSObject, NSCollectionViewDataSource, NSCollectio
 
     // MARK: - Data
 
-    private var folderCount: Int { model.folders.count }
+    /// Folder tiles lead the grid unless the folder columns are showing them already.
+    var showsFolderTiles = true {
+        didSet { if showsFolderTiles != oldValue { reload() } }
+    }
+
+    private var folderCount: Int { showsFolderTiles ? model.folders.count : 0 }
 
     func item(at index: Int) -> Item? {
         if index < folderCount { return model.folders[index] }

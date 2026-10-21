@@ -213,6 +213,16 @@
         }
       }
     },
+    "Back / forward through folders": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在文件夹之间后退 / 前进"
+          }
+        }
+      }
+    },
     "Back to Grid": {
       "localizations": {
         "zh-Hans": {
@@ -763,6 +773,16 @@
         }
       }
     },
+    "Forward": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "前进"
+          }
+        }
+      }
+    },
     "Frame Rate": {
       "localizations": {
         "zh-Hans": {
@@ -839,6 +859,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "帮助"
+          }
+        }
+      }
+    },
+    "Hide Folder Columns": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "隐藏文件夹分栏"
           }
         }
       }
@@ -1749,6 +1779,16 @@
         }
       }
     },
+    "Show Folder Columns": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示文件夹分栏"
+          }
+        }
+      }
+    },
     "Show Info": {
       "localizations": {
         "zh-Hans": {
@@ -1805,6 +1845,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "只显示图片、视频或某个标签"
+          }
+        }
+      }
+    },
+    "Show or hide folder columns": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示或隐藏文件夹分栏"
           }
         }
       }
@@ -2050,6 +2100,7 @@
       }
     },
     "Thumbnail Size": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {

@@ -25,8 +25,10 @@
 		66324B44D3F4555DEA219BFD /* GridLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02628CC158DA99F49199B5B4 /* GridLayout.swift */; };
 		6CE5DB15D864F77F04F89A28 /* ViewerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9C6747BA5BE3854C5B477F4 /* ViewerView.swift */; };
 		6EC3A21FFDB9A9530C8F14C6 /* SelfTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8547150399C04EEEDDE65C2 /* SelfTest.swift */; };
+		85BF76171048515CBFB36F37 /* FolderBrowser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25E8D8FE2E51AB5E7E7A2B9F /* FolderBrowser.swift */; };
 		905BB9227905A6605FDF3240 /* FolderModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2EAFC4D3DC52829A197FF35 /* FolderModel.swift */; };
 		94CDD40717B1991A5F6C4FB4 /* Preferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD38B3DFB673635047A7528B /* Preferences.swift */; };
+		95B43C0ADE27B2C8C5ECD6EA /* Snapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57FEE63F1962865B2C722A08 /* Snapshot.swift */; };
 		9DEBE760D6A5E9410B079722 /* SortBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15C06548B805AAE252AF04BA /* SortBar.swift */; };
 		B9F94798785A5C5A2F18C2CF /* MainMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3368FA203BA298E5C1C8497C /* MainMenu.swift */; };
 		BC1CFC73AC786BF5918A3801 /* Diagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9F025A1F34AB531BCF72599 /* Diagnostics.swift */; };
@@ -46,9 +48,11 @@
 		15C06548B805AAE252AF04BA /* SortBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SortBar.swift; sourceTree = "<group>"; };
 		24663C8CE821A111CB9F23DB /* Shortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shortcuts.swift; sourceTree = "<group>"; };
 		25740A45404DAAE655CEE6C7 /* ImageDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageDecoder.swift; sourceTree = "<group>"; };
+		25E8D8FE2E51AB5E7E7A2B9F /* FolderBrowser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderBrowser.swift; sourceTree = "<group>"; };
 		2F14B5608DDBF26A407B2874 /* Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings.swift; sourceTree = "<group>"; };
 		3368FA203BA298E5C1C8497C /* MainMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainMenu.swift; sourceTree = "<group>"; };
 		497962156AC26FEF1C65A232 /* Item.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Item.swift; sourceTree = "<group>"; };
+		57FEE63F1962865B2C722A08 /* Snapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Snapshot.swift; sourceTree = "<group>"; };
 		58265A1A47BC3258A0E060F5 /* ZoomScrollView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoomScrollView.swift; sourceTree = "<group>"; };
 		5BF5DB6F2B478488BC1740CA /* FolderScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderScanner.swift; sourceTree = "<group>"; };
 		5DD8326926E49FF16A54E9BF /* Glimt.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Glimt.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -127,6 +131,7 @@
 				9CB177D2624AD097703A5A87 /* Benchmark.swift */,
 				E9F025A1F34AB531BCF72599 /* Diagnostics.swift */,
 				C8547150399C04EEEDDE65C2 /* SelfTest.swift */,
+				57FEE63F1962865B2C722A08 /* Snapshot.swift */,
 			);
 			path = Support;
 			sourceTree = "<group>";
@@ -156,6 +161,7 @@
 			isa = PBXGroup;
 			children = (
 				06D950FB82171E3728BD6F3B /* BrowserController.swift */,
+				25E8D8FE2E51AB5E7E7A2B9F /* FolderBrowser.swift */,
 				02628CC158DA99F49199B5B4 /* GridLayout.swift */,
 				F594AE760C1A21DC75D2F6E8 /* ThumbnailCell.swift */,
 			);
@@ -221,6 +227,7 @@
 			knownRegions = (
 				Base,
 				en,
+				"zh-Hans",
 			);
 			mainGroup = 4AA244FDFA71EA68DB9F7688;
 			minimizedProjectReferenceProxies = 1;
@@ -257,6 +264,7 @@
 				2F0F57C1F39719229FDFD10C /* DecodePipeline.swift in Sources */,
 				BC1CFC73AC786BF5918A3801 /* Diagnostics.swift in Sources */,
 				35608B4C426243F90710C48F /* FileOperations.swift in Sources */,
+				85BF76171048515CBFB36F37 /* FolderBrowser.swift in Sources */,
 				905BB9227905A6605FDF3240 /* FolderModel.swift in Sources */,
 				F5F777C772DD1A7CC3C3D1C9 /* FolderScanner.swift in Sources */,
 				66324B44D3F4555DEA219BFD /* GridLayout.swift in Sources */,
@@ -270,6 +278,7 @@
 				6EC3A21FFDB9A9530C8F14C6 /* SelfTest.swift in Sources */,
 				1C55EFCB335BDEB8B17B4CEF /* Settings.swift in Sources */,
 				EEB43EF50851EE2265C5D318 /* Shortcuts.swift in Sources */,
+				95B43C0ADE27B2C8C5ECD6EA /* Snapshot.swift in Sources */,
 				9DEBE760D6A5E9410B079722 /* SortBar.swift in Sources */,
 				616C58C8D22007A7353336EB /* ThumbnailCell.swift in Sources */,
 				1AA1635E69F2CCF223A9D358 /* ThumbnailStore.swift in Sources */,

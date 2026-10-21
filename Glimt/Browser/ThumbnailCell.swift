@@ -24,8 +24,9 @@ final class ThumbnailCell: NSCollectionViewItem {
     }
 }
 
-/// One grid tile: image (aspect-fit, sharp corners like a print), selection plate, name with
-/// tag dots, and a duration badge for videos. All layers, so scrolling never redraws.
+/// One grid tile: the picture (aspect-fit, square corners like a print) standing on the bottom
+/// of a 4:3 box so a row of pictures shares a baseline, the name 8 pt below it, tag dots, and a
+/// duration badge for videos. All layers, so scrolling never redraws.
 final class ThumbnailTileView: NSView {
     private let plate = CALayer()
     private let imageLayer = CALayer()
@@ -132,16 +133,18 @@ final class ThumbnailTileView: NSView {
         needsDisplay = true
     }
 
-    /// Where the picture itself sits, for the zoom transition.
+    private var box: NSRect {
+        NSRect(x: 0, y: 0, width: bounds.width, height: (bounds.width * GridMetrics.boxAspect).rounded())
+    }
+
+    /// Where the picture itself sits (also used for the zoom transition): as large as fits in
+    /// the box, centred across, resting on the box's bottom edge.
     var imageRect: NSRect {
-        let square = NSRect(x: 0, y: 0, width: bounds.width, height: bounds.width).insetBy(dx: 6, dy: 6)
-        guard let aspect = imageAspect, aspect > 0 else { return square }
-        if aspect >= 1 {
-            let height = square.width / aspect
-            return NSRect(x: square.minX, y: square.midY - height / 2, width: square.width, height: height)
-        }
-        let width = square.height * aspect
-        return NSRect(x: square.midX - width / 2, y: square.minY, width: width, height: square.height)
+        let box = self.box
+        guard let aspect = imageAspect, aspect > 0 else { return box }
+        let width = min(box.width, box.height * aspect).rounded()
+        let height = min(box.height, (box.width / aspect)).rounded()
+        return NSRect(x: (box.midX - width / 2).rounded(), y: box.maxY - height, width: width, height: height)
     }
 
     var imageContents: Any? { imageLayer.contents }
@@ -153,8 +156,8 @@ final class ThumbnailTileView: NSView {
         plate.frame = image.insetBy(dx: -3, dy: -3)
 
         let badgeSize = badge.preferredFrameSize()
-        let badgeFrame = NSRect(x: image.maxX - badgeSize.width - 10, y: image.maxY - badgeSize.height - 7,
-                                width: badgeSize.width + 6, height: badgeSize.height + 2)
+        let badgeFrame = NSRect(x: image.maxX - badgeSize.width - 12, y: image.maxY - badgeSize.height - 8,
+                                width: badgeSize.width + 8, height: badgeSize.height + 2)
         badgeBackground.frame = badgeFrame
         badge.frame = badgeFrame.offsetBy(dx: 0, dy: 1)
         badge.contentsScale = window?.backingScaleFactor ?? 2
@@ -163,18 +166,22 @@ final class ThumbnailTileView: NSView {
             nameBackground.isHidden = true
             return
         }
-        let dotsWidth = CGFloat(tagDots.count) * 10
-        let maxText = bounds.width - 12 - dotsWidth
-        let textWidth = min(nameLabel.intrinsicContentSize.width, maxText)
+        // Measure the text itself: a truncating label's intrinsic width is the ellipsis, which
+        // is why names were cut short even with room to spare.
+        let dotsWidth = CGFloat(tagDots.count) * 12
+        let maxText = bounds.width - 8 - dotsWidth
+        let needed = nameLabel.cell?.cellSize(forBounds: NSRect(x: 0, y: 0, width: 10_000, height: GridMetrics.nameHeight)).width
+            ?? nameLabel.attributedStringValue.size().width + 6
+        let textWidth = min(ceil(needed), maxText)
         let total = textWidth + dotsWidth
-        let y = bounds.width + 2
-        var x = (bounds.width - total) / 2
+        let y = box.maxY + GridMetrics.nameGap
+        var x = ((bounds.width - total) / 2).rounded()
         for dot in tagDots {
-            dot.frame = NSRect(x: x, y: y + 5, width: 8, height: 8)
-            x += 10
+            dot.frame = NSRect(x: x, y: y + 4, width: 8, height: 8)
+            x += 12
         }
-        nameLabel.frame = NSRect(x: x, y: y, width: textWidth, height: 17)
-        nameBackground.frame = nameLabel.frame.insetBy(dx: -5, dy: -1)
+        nameLabel.frame = NSRect(x: x, y: y, width: textWidth, height: GridMetrics.nameHeight)
+        nameBackground.frame = nameLabel.frame.insetBy(dx: -4, dy: -1)
         nameBackground.isHidden = !isSelected
     }
 
@@ -183,9 +190,10 @@ final class ThumbnailTileView: NSView {
         plate.backgroundColor = nil
         plate.borderWidth = isSelected ? 2 : 0
         plate.borderColor = accent.cgColor
-        // A hairline keeps white pictures from dissolving into the paper background.
-        imageLayer.borderWidth = 1 / (window?.backingScaleFactor ?? 2)
-        imageLayer.borderColor = NSColor.labelColor.withAlphaComponent(0.08).cgColor
+        // An inset hairline (borders draw inside the bounds) keeps white or pale pictures from
+        // dissolving into the background, without competing with the picture's own colours.
+        imageLayer.borderWidth = 1
+        imageLayer.borderColor = NSColor.labelColor.withAlphaComponent(0.1).cgColor
         nameBackground.backgroundColor = accent.cgColor
         nameLabel.textColor = isSelected ? .white : .secondaryLabelColor
         for (dot, color) in zip(tagDots, tagColors) {

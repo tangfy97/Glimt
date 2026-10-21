@@ -1,9 +1,14 @@
 import AppKit
 
-/// One warm temperature throughout: paper in light mode, warm near-black in dark mode.
+/// Strictly neutral greys. A tinted surround shifts how the eye reads a photo's white balance,
+/// so a viewer must not have one; the grid uses the system's own content background so it
+/// meets the toolbar and status bar materials without a seam.
 enum Palette {
-    static let gridBackground = adaptive(light: (0.961, 0.953, 0.933), dark: (0.106, 0.098, 0.090))
-    static let viewerBackground = adaptive(light: (0.929, 0.918, 0.894), dark: (0.071, 0.067, 0.063))
+    static let gridBackground = NSColor.controlBackgroundColor
+    /// The folder columns: one step greyer than the content, so navigation and pictures read
+    /// as two surfaces without a heavy rule between them.
+    static let navigationBackground = adaptive(light: (0.955, 0.955, 0.955), dark: (0.155, 0.155, 0.155))
+    static let viewerBackground = adaptive(light: (0.925, 0.925, 0.925), dark: (0.075, 0.075, 0.075))
     static let fullScreenBackground = NSColor.black
 
     private static func adaptive(light: (CGFloat, CGFloat, CGFloat), dark: (CGFloat, CGFloat, CGFloat)) -> NSColor {

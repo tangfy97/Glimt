@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var windows: [MainWindowController] = []
     private var benchmark: Benchmark?
     private var selfTest: SelfTest?
+    private var snapshot: Snapshot?
     private var openedByEvent = false
 
     func applicationWillFinishLaunching(_ notification: Notification) {
@@ -25,6 +26,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             selfTest = test
             test.start()
             return
+        }
+        if let snapshot = Snapshot(window: main) {
+            self.snapshot = snapshot
+            snapshot.start()
         }
         benchmark = Benchmark(window: main, launchMs: launchMs)
         benchmark?.start()

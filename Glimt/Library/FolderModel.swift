@@ -176,6 +176,12 @@ final class FolderModel {
         index(of: url).map { all[$0] }
     }
 
+    /// Every subfolder of the open folder, unfiltered, in name order (for the folder columns).
+    var subfolderURLs: [URL] {
+        all.filter { $0.kind == .folder }.map(\.url)
+            .sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
+    }
+
     /// Whether `url` is one of the files currently listed.
     func contains(_ url: URL) -> Bool {
         index(of: url) != nil

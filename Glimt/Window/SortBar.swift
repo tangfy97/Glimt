@@ -30,7 +30,7 @@ final class SortBarView: NSVisualEffectView {
         stack.orientation = .horizontal
         stack.alignment = .centerY
         stack.spacing = 18
-        stack.edgeInsets = NSEdgeInsets(top: 0, left: 14, bottom: 0, right: 14)
+        stack.edgeInsets = NSEdgeInsets(top: 0, left: GridMetrics.margin, bottom: 0, right: GridMetrics.margin)
         stack.translatesAutoresizingMaskIntoConstraints = false
         stack.setHuggingPriority(.defaultLow, for: .horizontal)
         addSubview(stack)
@@ -52,6 +52,21 @@ final class SortBarView: NSVisualEffectView {
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
+    /// Trailing control (the thumbnail size slider), like the slider in Finder's status bar.
+    var accessory: NSView? {
+        didSet {
+            oldValue?.removeFromSuperview()
+            guard let accessory else { return }
+            accessory.translatesAutoresizingMaskIntoConstraints = false
+            addSubview(accessory)
+            NSLayoutConstraint.activate([
+                accessory.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -GridMetrics.margin),
+                accessory.centerYAnchor.constraint(equalTo: centerYAnchor),
+                stack.trailingAnchor.constraint(lessThanOrEqualTo: accessory.leadingAnchor, constant: -GridMetrics.margin),
+            ])
+        }
+    }
 
     @objc func reload() {
         for view in stack.arrangedSubviews { view.removeFromSuperview() }

@@ -135,6 +135,34 @@ final class SelfTest {
         window.model.includesSubfolders = false
         await until("turning it off goes back to this folder only") { !self.window.model.media.contains { $0.name == "deep.jpg" } && !self.window.model.folders.isEmpty }
 
+        // Folder columns follow whatever folder is open, and the grid drops its folder tiles.
+        await until("folder columns show the open folder") { self.samePath(self.window.folderColumns.selectedURL, self.photos) }
+        check("grid hides folder tiles while columns show", !window.browser.showsFolderTiles || !Preferences.showsFolderColumns)
+        window.open(photos.appendingPathComponent("nested"))
+        await until("opening a subfolder moves the columns") { self.samePath(self.window.folderColumns.selectedURL, self.photos.appendingPathComponent("nested")) }
+        window.openEnclosingFolder(nil)
+        await until("enclosing folder moves them back") { self.samePath(self.window.folderColumns.selectedURL, self.photos) }
+        window.folderColumns.onOpen?(photos.appendingPathComponent("nested"))
+        await until("picking a folder in the columns opens it in the grid") { self.samePath(self.window.model.folder, self.photos.appendingPathComponent("nested")) }
+        // Keyboard: ← goes to the parent folder, → into its first subfolder.
+        await until("columns reach the subfolder before keys") { self.samePath(self.window.folderColumns.selectedURL, self.photos.appendingPathComponent("nested")) }
+        if let table = window.folderColumns.currentTable {
+            window.window?.makeFirstResponder(table)
+            table.keyDown(with: key(NSLeftArrowFunctionKey))
+            await until("← in the columns opens the parent folder") { self.samePath(self.window.model.folder, self.photos) }
+            window.folderColumns.currentTable?.keyDown(with: key(NSRightArrowFunctionKey))
+            await until("→ opens its first subfolder") { self.samePath(self.window.model.folder, self.photos.appendingPathComponent("nested")) }
+        } else {
+            check("columns have a current table", false)
+        }
+
+        window.goBack(nil)
+        await until("Back returns to the previous folder") { self.samePath(self.window.model.folder, self.photos) }
+        window.goForward(nil)
+        await until("Forward goes to the subfolder again") { self.samePath(self.window.model.folder, self.photos.appendingPathComponent("nested")) }
+        window.open(photos)
+        await until("back in photos") { self.samePath(self.window.model.folder, self.photos) && self.window.model.media.count >= 3 }
+
         window.model.sortKey = .kind
         check("sort by kind puts JPEG before PNG", window.model.media.map(\.name).firstIndex(of: "a.jpg")! < window.model.media.map(\.name).firstIndex(of: "pair.png")!)
         window.model.sortKey = .name
@@ -153,6 +181,18 @@ final class SelfTest {
             try? await Task.sleep(for: .milliseconds(20))
         }
         check(name, condition())
+    }
+
+    private func key(_ functionKey: Int) -> NSEvent {
+        let character = String(Character(UnicodeScalar(UInt16(functionKey))!))
+        return NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [.function, .numericPad], timestamp: 0,
+                                windowNumber: window.window?.windowNumber ?? 0, context: nil, characters: character,
+                                charactersIgnoringModifiers: character, isARepeat: false, keyCode: 0)!
+    }
+
+    private func samePath(_ a: URL?, _ b: URL) -> Bool {
+        guard let a else { return false }
+        return a.resolvingSymlinksInPath().path == b.resolvingSymlinksInPath().path
     }
 
     private func exists(_ url: URL) -> Bool {

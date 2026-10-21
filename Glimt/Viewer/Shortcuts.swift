@@ -16,7 +16,9 @@ enum Shortcuts {
                 ("Home  End", String(localized: "First / last")),
                 ("Return", String(localized: "Open in viewer")),
                 ("Esc", String(localized: "Back to the grid")),
+                ("⌘[  ⌘]", String(localized: "Back / forward through folders")),
                 ("⌘↑", String(localized: "Enclosing folder")),
+                ("⌥⌘S", String(localized: "Show or hide folder columns")),
                 ("⌘F", String(localized: "Search names")),
             ]),
             Group(title: String(localized: "Sort into folders"), entries: [

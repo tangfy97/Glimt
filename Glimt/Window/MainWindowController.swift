@@ -12,12 +12,17 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
     private(set) lazy var browser = BrowserController(model: model)
     private(set) lazy var viewer = ViewerController(model: model)
     let inspector = InspectorController()
+    let folderColumns = FolderBrowserController()
 
     private let rootView = RootView()
     private let sortBar = SortBarView()
     private let emptyState = PlaceholderView()
     private(set) var mode = Mode.browser
     private var isTransitioning = false
+    /// Folders visited in this window, for Back and Forward (as in Finder; ⌘↑ is "up").
+    private var history: [URL] = []
+    private var historyIndex = -1
+    private var isNavigatingHistory = false
     private var enteredFullScreenForSlideshow = false
     private var searchItem: NSSearchToolbarItem?
     private var sizeSlider: NSSlider?
@@ -55,12 +60,32 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         rootView.browserView = browser.scrollView
         rootView.viewerView = viewer.view
         rootView.sortBar = sortBar
+        let slider = NSSlider(value: Double(browser.tileSide), minValue: Double(BrowserController.tileRange.lowerBound),
+                              maxValue: Double(BrowserController.tileRange.upperBound), target: nil, action: nil)
+        slider.controlSize = .small
+        slider.isContinuous = true
+        slider.toolTip = String(localized: "Thumbnail size (or pinch the grid)")
+        slider.widthAnchor.constraint(equalToConstant: 96).isActive = true
+        sizeSlider = slider
+        sortBar.accessory = slider
         rootView.emptyState = emptyState
         rootView.showsSortBar = Preferences.showSortBar
+        rootView.folderColumns = folderColumns.view
+        rootView.divider = FolderBrowserDivider()
+        rootView.showsFolderColumns = Preferences.showsFolderColumns
+        rootView.folderColumnsHeight = CGFloat(Preferences.folderColumnsHeight)
+        rootView.onFolderColumnsChanged = { [weak self] in self?.folderColumnsChanged() }
+        browser.showsFolderTiles = !Preferences.showsFolderColumns
+        folderColumns.onOpen = { [weak self] url in
+            guard let self, url.standardizedFileURL.path != self.model.folder?.standardizedFileURL.path else { return }
+            self.open(url)
+        }
         viewer.view.isHidden = true
         emptyState.show(.welcome)
         emptyState.onOpen = { [weak self] url in self?.open(url) }
 
+        sizeSlider?.target = self
+        sizeSlider?.action = #selector(thumbnailSliderChanged(_:))
         browser.delegate = self
         viewer.delegate = self
         sortBar.delegate = self
@@ -73,7 +98,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         }
         model.observe { [weak self] change in self?.modelChanged(change) }
 
-        let toolbar = NSToolbar(identifier: "Main")
+        let toolbar = NSToolbar(identifier: "Main.v2")
         toolbar.delegate = self
         toolbar.displayMode = .iconOnly
         toolbar.allowsUserCustomization = true
@@ -94,6 +119,10 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         let folder = isDirectory ? url : url.deletingLastPathComponent()
         onOpenedURL?(url)
         Preferences.noteRecent(url)
+        if !isNavigatingHistory, history.indices.contains(historyIndex) ? history[historyIndex].standardizedFileURL != folder.standardizedFileURL : true {
+            history = Array(history.prefix(historyIndex + 1)) + [folder]
+            historyIndex = history.count - 1
+        }
         if mode == .viewer { closeViewer(animated: false) }
         searchItem?.searchField.stringValue = ""
         model.searchText = ""
@@ -112,11 +141,14 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
 
     private func modelChanged(_ change: FolderModel.Change) {
         browser.reload()
+        if !model.isLoading, let folder = model.folder, !model.includesSubfolders {
+            folderColumns.reveal(folder, subfolders: model.subfolderURLs)
+        }
         if model.isLoading {
             emptyState.show(.loading(folder: model.folder?.lastPathComponent ?? ""))
         } else if model.folder == nil {
             emptyState.show(.welcome)
-        } else if model.folders.isEmpty && model.media.isEmpty {
+        } else if (model.folders.isEmpty || !browser.showsFolderTiles) && model.media.isEmpty {
             emptyState.show(model.isFiltered ? .noMatches : .noImages(folder: model.folder?.lastPathComponent ?? ""))
         } else {
             emptyState.isHidden = true
@@ -133,6 +165,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         let thumbnail = browser.thumbnail(for: item.url)
         let start = animated ? browser.imageFrame(forMedia: index, in: rootView) : nil
         mode = .viewer
+        rootView.isViewerMode = true
         viewer.view.isHidden = false
         viewer.show(index: index, seed: thumbnail)
         updateChrome()
@@ -152,6 +185,8 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         let index = viewer.index
         let fitted = viewer.view.fittedImage
         mode = .browser
+        rootView.isViewerMode = false
+        rootView.layoutSubtreeIfNeeded()
         browser.scrollView.isHidden = false
         browser.selectMedia(at: index, scroll: true)
         browser.focus()
@@ -260,7 +295,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
             window.subtitle = subtitle
         }
         sizeSlider?.doubleValue = Double(browser.tileSide)
-        sizeSlider?.isEnabled = mode == .browser
+        sizeSlider?.isHidden = mode != .browser
     }
 
     // MARK: - Keys that bypass the menus
@@ -465,8 +500,24 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
 
     // MARK: - Navigation commands
 
+    /// In the viewer: back to the grid. In the grid: the previously visited folder.
     @objc func goBack(_ sender: Any?) {
-        if mode == .viewer { closeViewer(animated: true) } else { openEnclosingFolder(sender) }
+        if mode == .viewer {
+            closeViewer(animated: true)
+        } else if historyIndex > 0 {
+            visitHistory(historyIndex - 1)
+        }
+    }
+
+    @objc func goForward(_ sender: Any?) {
+        if mode == .browser, historyIndex + 1 < history.count { visitHistory(historyIndex + 1) }
+    }
+
+    private func visitHistory(_ index: Int) {
+        historyIndex = index
+        isNavigatingHistory = true
+        open(history[index])
+        isNavigatingHistory = false
     }
 
     @objc func openEnclosingFolder(_ sender: Any?) {
@@ -567,6 +618,21 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
     @objc func setTagFilter(_ sender: NSMenuItem) {
         let tags = FinderTags.all
         model.tagFilter = tags.indices.contains(sender.tag) ? tags[sender.tag].name : nil
+    }
+
+    @objc func toggleFolderColumns(_ sender: Any?) {
+        rootView.showsFolderColumns.toggle()
+        folderColumnsChanged()
+    }
+
+    private func folderColumnsChanged() {
+        Preferences.showsFolderColumns = rootView.showsFolderColumns
+        Preferences.folderColumnsHeight = Double(rootView.folderColumnsHeight)
+        browser.showsFolderTiles = !rootView.showsFolderColumns
+        if rootView.showsFolderColumns, let folder = model.folder {
+            folderColumns.reveal(folder, subfolders: model.subfolderURLs)
+        }
+        modelChanged(.reloaded)
     }
 
     @objc func toggleSubfolders(_ sender: Any?) {
@@ -684,6 +750,9 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
             return !targetURLs().isEmpty
         case #selector(selectNone(_:)):
             return mode == .browser && !browser.collectionView.selectionIndexPaths.isEmpty
+        case #selector(toggleFolderColumns(_:)):
+            item.title = rootView.showsFolderColumns ? String(localized: "Hide Folder Columns") : String(localized: "Show Folder Columns")
+            return mode == .browser
         case #selector(toggleSubfolders(_:)):
             item.state = model.includesSubfolders ? .on : .off
             return model.folder != nil
@@ -756,7 +825,9 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
             }
             return !model.media.isEmpty && (item.tag == 0 || !viewer.isSlideshowRunning)
         case #selector(goBack(_:)):
-            return mode == .viewer || model.folder.map { $0.path != "/" } == true
+            return mode == .viewer || historyIndex > 0
+        case #selector(goForward(_:)):
+            return mode == .browser && historyIndex + 1 < history.count
         default:
             return true
         }
@@ -889,7 +960,6 @@ extension MainWindowController: SortBarDelegate {
 
 extension NSToolbarItem.Identifier {
     static let back = Self("back")
-    static let thumbnailSize = Self("thumbnailSize")
     static let sortOrder = Self("sortOrder")
     static let filter = Self("filter")
     static let slideshow = Self("slideshow")
@@ -906,7 +976,7 @@ extension MainWindowController: NSSharingServicePickerToolbarItemDelegate {
 
 extension MainWindowController: NSToolbarDelegate, NSSearchFieldDelegate {
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [.back, .flexibleSpace, .thumbnailSize, .sortOrder, .filter, .share, .slideshow, .info, .search]
+        [.back, .flexibleSpace, .sortOrder, .filter, .share, .slideshow, .info, .search]
     }
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
@@ -918,18 +988,6 @@ extension MainWindowController: NSToolbarDelegate, NSSearchFieldDelegate {
         case .back:
             let item = button(identifier, String(localized: "Back"), "chevron.left", #selector(goBack(_:)))
             item.isNavigational = true
-            return item
-        case .thumbnailSize:
-            let slider = NSSlider(value: Double(browser.tileSide), minValue: Double(BrowserController.tileRange.lowerBound),
-                                  maxValue: Double(BrowserController.tileRange.upperBound), target: self, action: #selector(thumbnailSliderChanged(_:)))
-            slider.controlSize = .small
-            slider.isContinuous = true
-            slider.widthAnchor.constraint(equalToConstant: 110).isActive = true
-            sizeSlider = slider
-            let item = NSToolbarItem(itemIdentifier: identifier)
-            item.view = slider
-            item.label = String(localized: "Thumbnail Size")
-            item.toolTip = String(localized: "Thumbnail size (or pinch the grid)")
             return item
         case .sortOrder:
             let item = NSMenuToolbarItem(itemIdentifier: identifier)
@@ -1004,13 +1062,35 @@ final class MainWindow: NSWindow {
     }
 }
 
-/// Grid and viewer stacked in the same place, sort bar along the bottom.
+/// Folder columns on top (under the toolbar), the grid below them, the viewer covering both
+/// when open, and the sort bar along the bottom.
 final class RootView: NSView {
     var browserView: NSView? { didSet { install(browserView, below: viewerView) } }
     var viewerView: NSView? { didSet { install(viewerView, below: emptyState) } }
     var emptyState: NSView? { didSet { install(emptyState, below: nil) } }
     var sortBar: NSView? { didSet { install(sortBar, below: nil) } }
+    var folderColumns: NSView? { didSet { install(folderColumns, below: viewerView) } }
+    var divider: FolderBrowserDivider? {
+        didSet {
+            install(divider, below: viewerView)
+            divider?.onDrag = { [weak self] y in self?.dragDivider(toWindowY: y) }
+            divider?.onDragEnded = { [weak self] in self?.onFolderColumnsChanged?() }
+            divider?.onDoubleClick = { [weak self] in
+                guard let self else { return }
+                self.showsFolderColumns.toggle()
+                self.onFolderColumnsChanged?()
+            }
+        }
+    }
     var showsSortBar = true { didSet { needsLayout = true } }
+    var showsFolderColumns = true { didSet { needsLayout = true } }
+    var folderColumnsHeight: CGFloat = 170 { didSet { needsLayout = true } }
+    /// The viewer covers everything, so the columns step aside while it is open.
+    var isViewerMode = false { didSet { needsLayout = true } }
+    /// The divider was dragged or double-clicked: persist `showsFolderColumns` and the height.
+    var onFolderColumnsChanged: (() -> Void)?
+
+    static let minimumColumnsHeight: CGFloat = 90
 
     private func install(_ view: NSView?, below other: NSView?) {
         guard let view else { return }
@@ -1022,13 +1102,65 @@ final class RootView: NSView {
         needsLayout = true
     }
 
+    private var contentRect: NSRect {
+        let barHeight: CGFloat = showsSortBar ? SortBarView.height : 0
+        return NSRect(x: 0, y: barHeight, width: bounds.width, height: bounds.height - barHeight)
+    }
+
+    /// Where the columns start: just below the toolbar (which overlaps the content view).
+    private var columnsTop: CGFloat {
+        let content = contentRect
+        guard let window else { return content.maxY }
+        let layoutTop = convert(window.contentLayoutRect, from: nil).maxY
+        return min(content.maxY, layoutTop)
+    }
+
+    private var maximumColumnsHeight: CGFloat {
+        max(Self.minimumColumnsHeight, (columnsTop - contentRect.minY) * 0.65)
+    }
+
+    private func dragDivider(toWindowY y: CGFloat) {
+        let height = columnsTop - convert(NSPoint(x: 0, y: y), from: nil).y
+        if height < 48 {
+            showsFolderColumns = false
+        } else {
+            showsFolderColumns = true
+            folderColumnsHeight = min(max(height, Self.minimumColumnsHeight), maximumColumnsHeight)
+        }
+    }
+
     override func layout() {
         super.layout()
         let barHeight: CGFloat = showsSortBar ? SortBarView.height : 0
         sortBar?.isHidden = !showsSortBar
         sortBar?.frame = NSRect(x: 0, y: 0, width: bounds.width, height: barHeight)
-        let content = NSRect(x: 0, y: barHeight, width: bounds.width, height: bounds.height - barHeight)
-        for view in [browserView, viewerView, emptyState] { view?.frame = content }
+        let content = contentRect
+        viewerView?.frame = content
+
+        guard let folderColumns, let divider, !isViewerMode else {
+            folderColumns?.isHidden = true
+            divider?.isHidden = true
+            browserView?.frame = content
+            emptyState?.frame = content
+            return
+        }
+        let top = columnsTop
+        divider.isHidden = false
+        var gridTop = content.maxY
+        if showsFolderColumns {
+            let height = min(max(folderColumnsHeight, Self.minimumColumnsHeight), maximumColumnsHeight)
+            folderColumns.isHidden = false
+            folderColumns.frame = NSRect(x: 0, y: top - height, width: bounds.width, height: height)
+            divider.frame = NSRect(x: 0, y: top - height - 4, width: bounds.width, height: 7)
+            gridTop = top - height
+        } else {
+            // Collapsed: an invisible strip under the toolbar to drag the columns back down.
+            folderColumns.isHidden = true
+            divider.frame = NSRect(x: 0, y: top - 5, width: bounds.width, height: 5)
+        }
+        let grid = NSRect(x: 0, y: content.minY, width: bounds.width, height: max(0, gridTop - content.minY))
+        browserView?.frame = grid
+        emptyState?.frame = grid
     }
 }
 

@@ -23,6 +23,8 @@ enum Preferences {
         static let appearance = "Appearance"
         static let infoOverlay = "InfoOverlay"
         static let recentPaths = "RecentPaths"
+        static let showsFolderColumns = "ShowsFolderColumns"
+        static let folderColumnsHeight = "FolderColumnsHeight"
     }
 
     private static var defaults: UserDefaults { .standard }
@@ -45,6 +47,9 @@ enum Preferences {
             Key.slideshowShuffles: false,
             Key.appearance: "system",
             Key.infoOverlay: 0,
+            Key.showsFolderColumns: true,
+            // Six places, the gap, one volume, 8 pt padding above and below, the hairline.
+            Key.folderColumnsHeight: 193.0,
         ])
     }
 
@@ -92,6 +97,14 @@ enum Preferences {
         set { defaults.set(newValue, forKey: Key.infoOverlay) }
     }
     static var appearance: String { defaults.string(forKey: Key.appearance) ?? "system" }
+    static var showsFolderColumns: Bool {
+        get { defaults.bool(forKey: Key.showsFolderColumns) }
+        set { defaults.set(newValue, forKey: Key.showsFolderColumns) }
+    }
+    static var folderColumnsHeight: Double {
+        get { defaults.double(forKey: Key.folderColumnsHeight) }
+        set { defaults.set(newValue, forKey: Key.folderColumnsHeight) }
+    }
 
     /// Folders and files opened lately, newest first, for Open Recent and the welcome screen.
     static var recentURLs: [URL] {
