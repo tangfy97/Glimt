@@ -60,15 +60,14 @@ final class FileOperations {
             MainActor.assumeIsolated { operations.trash(copies.map(\.to), includingCompanions: false) }
         }
         undoManager.setActionName(String(localized: "Copy"))
-        Task {
-            let failures = await Self.inBackground {
-                copies.compactMap { copy -> String? in
-                    do { try FileManager.default.copyItem(at: copy.from, to: copy.to); return nil }
-                    catch { return error.localizedDescription }
-                }
+        Self.inBackground {
+            copies.compactMap { copy -> String? in
+                do { try FileManager.default.copyItem(at: copy.from, to: copy.to); return nil }
+                catch { return error.localizedDescription }
             }
-            report(failures)
-            model?.scheduleRefresh()
+        } then: { [weak self] failures in
+            self?.report(failures)
+            self?.model?.scheduleRefresh()
         }
     }
 
@@ -84,24 +83,23 @@ final class FileOperations {
             }
         }
         undoManager.setActionName(String(localized: "Move to Trash"))
-        Task {
-            let result = await Self.inBackground {
-                var moves: [Move] = []
-                var failures: [String] = []
-                for url in urls {
-                    var trashed: NSURL?
-                    do {
-                        try FileManager.default.trashItem(at: url, resultingItemURL: &trashed)
-                        if let trashed = trashed as URL? { moves.append(Move(from: url, to: trashed)) }
-                    } catch {
-                        failures.append(error.localizedDescription)
-                    }
+        Self.inBackground {
+            var moves: [Move] = []
+            var failures: [String] = []
+            for url in urls {
+                var trashed: NSURL?
+                do {
+                    try FileManager.default.trashItem(at: url, resultingItemURL: &trashed)
+                    if let trashed = trashed as URL? { moves.append(Move(from: url, to: trashed)) }
+                } catch {
+                    failures.append(error.localizedDescription)
                 }
-                return (moves, failures)
             }
+            return (moves, failures)
+        } then: { [weak self] result in
             record.moves = result.0
-            report(result.1)
-            model?.scheduleRefresh()
+            self?.report(result.1)
+            self?.model?.scheduleRefresh()
         }
     }
 
@@ -127,20 +125,19 @@ final class FileOperations {
         }
         undoManager.setActionName(actionName)
 
-        Task {
-            let failures = await Self.inBackground {
-                moves.compactMap { move -> String? in
-                    do {
-                        try FileManager.default.createDirectory(at: move.to.deletingLastPathComponent(), withIntermediateDirectories: true)
-                        try FileManager.default.moveItem(at: move.from, to: move.to)
-                        return nil
-                    } catch {
-                        return error.localizedDescription
-                    }
+        Self.inBackground {
+            moves.compactMap { move -> String? in
+                do {
+                    try FileManager.default.createDirectory(at: move.to.deletingLastPathComponent(), withIntermediateDirectories: true)
+                    try FileManager.default.moveItem(at: move.from, to: move.to)
+                    return nil
+                } catch {
+                    return error.localizedDescription
                 }
             }
-            report(failures)
-            model?.scheduleRefresh()
+        } then: { [weak self] failures in
+            self?.report(failures)
+            self?.model?.scheduleRefresh()
         }
     }
 
@@ -177,16 +174,15 @@ final class FileOperations {
             MainActor.assumeIsolated { operations.transform(urls, transform.inverse) }
         }
         undoManager.setActionName(transform.actionName)
-        Task {
-            let failures = await Self.inBackground {
-                urls.compactMap { url -> String? in
-                    do { try ImageRotator.apply(transform, to: url); return nil }
-                    catch { return String(localized: "“\(url.lastPathComponent)” can’t be turned without re-encoding it.") }
-                }
+        Self.inBackground {
+            urls.compactMap { url -> String? in
+                do { try ImageRotator.apply(transform, to: url); return nil }
+                catch { return String(localized: "“\(url.lastPathComponent)” can’t be turned without re-encoding it.") }
             }
-            for url in urls { onContentsChanged?(url) }
-            report(failures)
-            model?.scheduleRefresh()
+        } then: { [weak self] failures in
+            for url in urls { self?.onContentsChanged?(url) }
+            self?.report(failures)
+            self?.model?.scheduleRefresh()
         }
     }
 
@@ -254,12 +250,15 @@ final class FileOperations {
     }
 
     /// All file work runs here, one operation at a time, in the order it was issued, so an
-    /// undo that follows a rotate (or a move) never races the work it is undoing.
+    /// undo that follows a rotate (or a move) never races the work it is undoing. The work is
+    /// queued synchronously by the caller: starting a Task first would let two operations
+    /// issued back to back reach the queue in either order.
     nonisolated private static let queue = DispatchQueue(label: "Glimt.fileOperations", qos: .userInitiated)
 
-    nonisolated private static func inBackground<T: Sendable>(_ work: @escaping @Sendable () -> T) async -> T {
-        await withCheckedContinuation { continuation in
-            queue.async { continuation.resume(returning: work()) }
+    private static func inBackground<T: Sendable>(_ work: @escaping @Sendable () -> T, then finish: @escaping @MainActor (T) -> Void) {
+        queue.async {
+            let result = work()
+            DispatchQueue.main.async { finish(result) }
         }
     }
 }

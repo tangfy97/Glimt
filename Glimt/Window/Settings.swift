@@ -1,26 +1,29 @@
 import AppKit
-import Observation
 import SwiftUI
 
+/// The Settings window in the standard Mac layout: toolbar tabs, right-aligned labels ending in
+/// a colon, checkboxes. Two panes; keyboard shortcuts live under Help instead.
 @MainActor
 final class SettingsWindowController: NSWindowController {
-    enum Tab: Hashable {
-        case general, sorting, shortcuts
-    }
-
-    @Observable
-    final class Navigation {
-        var tab = Tab.general
+    enum Tab: Int, CaseIterable {
+        case general, sorting
     }
 
     static let shared = SettingsWindowController()
-    private let navigation = Navigation()
+    private let tabs = NSTabViewController()
 
     private init() {
-        let hosting = NSHostingController(rootView: SettingsView(navigation: navigation))
-        let window = NSWindow(contentViewController: hosting)
-        window.title = String(localized: "Settings")
+        tabs.tabStyle = .toolbar
+        // No cross-fade: with it, the window resizes while both panes are half drawn, which
+        // reads as a flash. Panes are sized up front, so the switch is a single clean resize.
+        tabs.transitionOptions = [.allowUserInteraction]
+        tabs.canPropagateSelectedChildViewControllerTitle = true
+        tabs.addTabViewItem(Self.item(GeneralPane(), title: String(localized: "General"), symbol: "gearshape"))
+        tabs.addTabViewItem(Self.item(SortingPane(), title: String(localized: "Sorting"), symbol: "tray.2"))
+        let window = NSWindow(contentViewController: tabs)
         window.styleMask = [.titled, .closable]
+        // The window takes the selected pane's name, as macOS Settings windows do.
+        window.title = tabs.tabViewItems.first?.label ?? String(localized: "Settings")
         window.isReleasedWhenClosed = false
         super.init(window: window)
         window.center()
@@ -28,155 +31,225 @@ final class SettingsWindowController: NSWindowController {
 
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
 
+    private static func item(_ pane: some View, title: String, symbol: String) -> NSTabViewItem {
+        let hosting = NSHostingController(rootView: pane)
+        hosting.title = title
+        hosting.sizingOptions = [.preferredContentSize]
+        // Know the size before the first switch, so the window never resizes around an empty pane.
+        hosting.preferredContentSize = hosting.view.fittingSize
+        let item = NSTabViewItem(viewController: hosting)
+        item.label = title
+        item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: title)
+        return item
+    }
+
     func show(tab: Tab) {
-        navigation.tab = tab
+        tabs.selectedTabViewItemIndex = tab.rawValue
         showWindow(nil)
     }
 }
 
-struct SettingsView: View {
-    @Bindable var navigation: SettingsWindowController.Navigation
+/// Shared frame for both panes, so labels line up at the same x when switching tabs.
+private struct Pane<Content: View>: View {
+    @ViewBuilder var content: Content
 
     var body: some View {
-        TabView(selection: $navigation.tab) {
-            GeneralSettings().tabItem { Label("General", systemImage: "gearshape") }.tag(SettingsWindowController.Tab.general)
-            SortingSettings().tabItem { Label("Sorting", systemImage: "tray.2") }.tag(SettingsWindowController.Tab.sorting)
-            ShortcutsSettings().tabItem { Label("Shortcuts", systemImage: "keyboard") }.tag(SettingsWindowController.Tab.shortcuts)
-        }
-        .frame(width: 540)
-        .fixedSize(horizontal: false, vertical: true)
+        Form { content }
+            .formStyle(.columns)
+            .padding(.horizontal, 32)
+            .padding(.vertical, 24)
+            .frame(width: 460, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
     }
 }
 
-private struct GeneralSettings: View {
+private struct GeneralPane: View {
     @AppStorage(Preferences.Key.appearance) private var appearance = "system"
     @AppStorage(Preferences.Key.showFileNames) private var showFileNames = true
     @AppStorage(Preferences.Key.upscaleSmallImages) private var upscaleSmallImages = false
     @AppStorage(Preferences.Key.showsLargeImagesAtActualSize) private var actualSize = false
     @AppStorage(Preferences.Key.keepsZoomWhenPaging) private var keepZoom = false
-    @AppStorage(Preferences.Key.slideshowInterval) private var slideshowInterval = 4.0
-    @AppStorage(Preferences.Key.slideshowLoops) private var slideshowLoops = true
-    @AppStorage(Preferences.Key.slideshowShuffles) private var slideshowShuffles = false
+    @AppStorage(Preferences.Key.slideshowInterval) private var interval = 4.0
+    @AppStorage(Preferences.Key.slideshowLoops) private var loops = true
+    @AppStorage(Preferences.Key.slideshowShuffles) private var shuffles = false
     @State private var cacheSize: Int64?
 
+    /// The same steps `[` and `]` move through during a slideshow.
+    private let intervals: [Double] = [0.5, 1, 1.5, 2, 3, 4, 5, 7, 10, 15, 20, 30]
+
     var body: some View {
-        Form {
-            Section {
-                Picker("Appearance", selection: $appearance) {
-                    Text("Match the system").tag("system")
-                    Text("Light").tag("light")
-                    Text("Dark").tag("dark")
+        Pane {
+            Picker("Appearance:", selection: $appearance) {
+                Text("Automatic").tag("system")
+                Text("Light").tag("light")
+                Text("Dark").tag("dark")
+            }
+            .fixedSize()
+
+            Toggle("Show names", isOn: $showFileNames)
+                .labeledContent("Grid:")
+                .padding(.top, 8)
+
+            LabeledContent("Viewer:") {
+                VStack(alignment: .leading, spacing: 6) {
+                    Toggle("Enlarge small images", isOn: $upscaleSmallImages)
+                    Toggle("Open large images at 100%", isOn: $actualSize)
+                    Toggle("Keep zoom between images", isOn: $keepZoom)
                 }
-                Toggle("Show file names under thumbnails", isOn: $showFileNames)
             }
-            Section("Viewer") {
-                Toggle("Enlarge small images to fill the window", isOn: $upscaleSmallImages)
-                Toggle("Open large images at actual size", isOn: $actualSize)
-                Toggle("Keep the zoom when moving to the next image", isOn: $keepZoom)
-            }
-            Section("Slideshow") {
-                LabeledContent("Each image for") {
-                    HStack {
-                        Slider(value: $slideshowInterval, in: 1...20, step: 1)
-                            .frame(width: 180)
-                        Text("\(Int(slideshowInterval)) s")
-                            .monospacedDigit()
-                            .frame(width: 36, alignment: .trailing)
-                    }
-                }
-                Toggle("Start over after the last image", isOn: $slideshowLoops)
-                Toggle("Shuffle", isOn: $slideshowShuffles)
-            }
-            Section("Thumbnail cache") {
-                LabeledContent("Size on disk") {
-                    HStack {
-                        Text(cacheSize.map { ByteCountFormatter.string(fromByteCount: $0, countStyle: .file) } ?? "…")
-                            .monospacedDigit()
-                        Button("Clear") {
-                            ThumbnailStore.shared.clearDiskCache()
-                            Task { cacheSize = await ThumbnailStore.diskUsage() }
+            .padding(.top, 8)
+
+            LabeledContent("Slideshow:") {
+                VStack(alignment: .leading, spacing: 6) {
+                    Picker("", selection: $interval) {
+                        ForEach(intervals, id: \.self) { seconds in
+                            Text(Self.format(seconds)).tag(seconds)
                         }
                     }
+                    .labelsHidden()
+                    .fixedSize()
+                    Toggle("Loop", isOn: $loops)
+                    Toggle("Shuffle", isOn: $shuffles)
                 }
             }
+            .padding(.top, 8)
+
+            LabeledContent("Thumbnail cache:") {
+                HStack(spacing: 12) {
+                    Text(cacheSize.map { ByteCountFormatter.string(fromByteCount: $0, countStyle: .file) } ?? "–")
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                    Button("Clear") {
+                        ThumbnailStore.shared.clearDiskCache()
+                        Task { cacheSize = await ThumbnailStore.diskUsage() }
+                    }
+                    .disabled(cacheSize == 0)
+                }
+            }
+            .padding(.top, 8)
         }
-        .formStyle(.grouped)
+        .toggleStyle(.checkbox)
         .task { cacheSize = await ThumbnailStore.diskUsage() }
         .onChange(of: appearance) { Preferences.applyAppearance() }
     }
+
+    private static func format(_ seconds: Double) -> String {
+        let value = seconds.rounded() == seconds ? String(Int(seconds)) : String(format: "%.1f", seconds)
+        return String(localized: "\(value) s")
+    }
 }
 
-private struct SortingSettings: View {
+private struct SortingPane: View {
     @AppStorage(Preferences.Key.numberKeysCopy) private var numberKeysCopy = false
     @AppStorage(Preferences.Key.movesCompanions) private var movesCompanions = true
     private let targets = SortTargets.shared
 
     var body: some View {
-        Form {
-            Section {
-                Picker("Number keys", selection: $numberKeysCopy) {
-                    Text("Move the file (⇧ copies)").tag(false)
-                    Text("Copy the file (⇧ moves)").tag(true)
-                }
-                Toggle(isOn: $movesCompanions) {
-                    Text("Keep RAW+JPEG pairs together")
-                    Text("Files with the same name, Live Photo movies and .xmp sidecars move, copy, rename and go to the Trash together.")
-                }
-            }
-            Section("Folders") {
-                ForEach(0..<SortTargets.count, id: \.self) { slot in
-                    HStack(spacing: 10) {
-                        Text("\(slot + 1)")
-                            .font(.body.monospacedDigit().weight(.semibold))
-                            .foregroundStyle(.secondary)
-                            .frame(width: 16)
-                        if let folder = targets.folders[slot] {
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(folder.lastPathComponent)
-                                Text((folder.deletingLastPathComponent().path as NSString).abbreviatingWithTildeInPath)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(1)
-                                    .truncationMode(.middle)
-                            }
-                        } else {
-                            Text("Not set").foregroundStyle(.tertiary)
-                        }
-                        Spacer()
-                        Button("Choose…") {
-                            Task { _ = await targets.choose(for: slot, attachedTo: NSApp.keyWindow) }
-                        }
-                        if targets.folders[slot] != nil {
-                            Button {
-                                targets.set(nil, at: slot)
-                            } label: {
-                                Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary)
-                            }
-                            .buttonStyle(.borderless)
-                            .help("Remove")
-                        }
+        Pane {
+            LabeledContent("Number keys:") {
+                VStack(alignment: .leading, spacing: 4) {
+                    Picker("", selection: $numberKeysCopy) {
+                        Text("Move").tag(false)
+                        Text("Copy").tag(true)
                     }
+                    .pickerStyle(.radioGroup)
+                    .labelsHidden()
+                    Text("Hold ⇧ to do the other.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
                 }
             }
+
+            Toggle("Keep RAW and JPEG together", isOn: $movesCompanions)
+                .toggleStyle(.checkbox)
+                .help("Files with the same name, Live Photo movies and .xmp sidecars travel with the photo.")
+                .labeledContent("Pairs:")
+                .padding(.top, 8)
+
+            LabeledContent("Folders:") {
+                FolderList(targets: targets)
+            }
+            .padding(.top, 8)
         }
-        .formStyle(.grouped)
     }
 }
 
-private struct ShortcutsSettings: View {
+/// Only the keys that have a folder, then one way to add another. No rows of "Not set".
+private struct FolderList: View {
+    let targets: SortTargets
+
+    private var assigned: [(slot: Int, folder: URL)] {
+        targets.folders.enumerated().compactMap { slot, folder in folder.map { (slot, $0) } }
+    }
+
     var body: some View {
-        Form {
-            ForEach(Shortcuts.groups) { group in
-                Section(group.title) {
-                    ForEach(group.entries, id: \.keys) { entry in
-                        LabeledContent(entry.action) {
-                            Text(entry.keys).font(.body.monospaced()).foregroundStyle(.secondary)
-                        }
+        VStack(alignment: .leading, spacing: 8) {
+            if assigned.isEmpty {
+                Text("None yet.")
+                    .foregroundStyle(.secondary)
+            }
+            ForEach(assigned, id: \.slot) { entry in
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Text("\(entry.slot + 1)")
+                        .monospacedDigit()
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.secondary)
+                        .frame(width: 12, alignment: .trailing)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(entry.folder.lastPathComponent)
+                        Text((entry.folder.path as NSString).abbreviatingWithTildeInPath)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
                     }
+                    .frame(width: 180, alignment: .leading)
+                    Button("Change…") { choose(entry.slot) }
+                        .controlSize(.small)
+                    Button {
+                        targets.set(nil, at: entry.slot)
+                    } label: {
+                        Image(systemName: "minus.circle")
+                    }
+                    .buttonStyle(.borderless)
+                    .foregroundStyle(.secondary)
+                    .help("Remove")
                 }
             }
+            if let free = targets.folders.firstIndex(where: { $0 == nil }) {
+                Button("Add Folder…") { choose(free) }
+            }
         }
-        .formStyle(.grouped)
-        .frame(height: 520)
+    }
+
+    private func choose(_ slot: Int) {
+        Task { _ = await targets.choose(for: slot, attachedTo: SettingsWindowController.shared.window) }
+    }
+}
+
+private extension View {
+    /// A control whose own label is its text, placed in the form's label column under `label`.
+    func labeledContent(_ label: LocalizedStringKey) -> some View {
+        LabeledContent(label) { self }
+    }
+}
+
+/// Help ▸ Keyboard Shortcuts outside the viewer: the same sheet the viewer shows for `?`.
+@MainActor
+final class ShortcutsPanel {
+    static let shared = ShortcutsPanel()
+    private lazy var panel: NSPanel = {
+        let sheet = ShortcutSheetView()
+        let panel = NSPanel(contentRect: NSRect(origin: .zero, size: sheet.fittingSize),
+                            styleMask: [.titled, .closable, .hudWindow, .utilityWindow], backing: .buffered, defer: true)
+        panel.title = String(localized: "Keyboard Shortcuts")
+        panel.contentView = sheet
+        panel.isReleasedWhenClosed = false
+        panel.center()
+        return panel
+    }()
+
+    func toggle() {
+        if panel.isVisible { panel.orderOut(nil) } else { panel.makeKeyAndOrderFront(nil) }
     }
 }

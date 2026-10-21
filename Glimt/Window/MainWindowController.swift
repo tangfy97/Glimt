@@ -666,7 +666,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         if mode == .viewer {
             viewer.view.toggleShortcuts()
         } else {
-            SettingsWindowController.shared.show(tab: .shortcuts)
+            ShortcutsPanel.shared.toggle()
         }
     }
 

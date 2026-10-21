@@ -1,6 +1,16 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": ""
+          }
+        }
+      }
+    },
     " (%lld mm equiv.)": {
       "localizations": {
         "zh-Hans": {
@@ -17,6 +27,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "（默认）"
+          }
+        }
+      }
+    },
+    "%@ s": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 秒"
           }
         }
       }
@@ -58,6 +78,7 @@
       }
     },
     "%lld s": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -109,6 +130,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "实际大小 / 适合窗口"
+          }
+        }
+      }
+    },
+    "Add Folder…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加文件夹…"
           }
         }
       }
@@ -174,11 +205,22 @@
       }
     },
     "Appearance": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "外观"
+          }
+        }
+      }
+    },
+    "Appearance:": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "外观："
           }
         }
       }
@@ -189,6 +231,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "升序"
+          }
+        }
+      }
+    },
+    "Automatic": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自动"
           }
         }
       }
@@ -293,6 +345,16 @@
         }
       }
     },
+    "Change…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更改…"
+          }
+        }
+      }
+    },
     "Choose Another Folder…": {
       "localizations": {
         "zh-Hans": {
@@ -344,6 +406,7 @@
       }
     },
     "Choose…": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -454,6 +517,7 @@
       }
     },
     "Copy the file (⇧ moves)": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -584,6 +648,7 @@
       }
     },
     "Each image for": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -633,7 +698,18 @@
         }
       }
     },
+    "Enlarge small images": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "放大小图"
+          }
+        }
+      }
+    },
     "Enlarge small images to fill the window": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -684,11 +760,22 @@
       }
     },
     "Files with the same name, Live Photo movies and .xmp sidecars move, copy, rename and go to the Trash together.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "同名文件、实况照片的视频和 .xmp 附属文件会一起移动、拷贝、重新命名和移到废纸篓。"
+          }
+        }
+      }
+    },
+    "Files with the same name, Live Photo movies and .xmp sidecars travel with the photo.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同名文件、实况照片的视频和 .xmp 附属文件随照片一起处理。"
           }
         }
       }
@@ -764,11 +851,22 @@
       }
     },
     "Folders": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "文件夹"
+          }
+        }
+      }
+    },
+    "Folders:": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "文件夹："
           }
         }
       }
@@ -853,6 +951,16 @@
         }
       }
     },
+    "Grid:": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "网格："
+          }
+        }
+      }
+    },
     "Help": {
       "localizations": {
         "zh-Hans": {
@@ -923,6 +1031,16 @@
         }
       }
     },
+    "Hold ⇧ to do the other.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按住 ⇧ 则相反。"
+          }
+        }
+      }
+    },
     "Home": {
       "localizations": {
         "zh-Hans": {
@@ -983,7 +1101,18 @@
         }
       }
     },
+    "Keep RAW and JPEG together": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RAW 与 JPEG 一起处理"
+          }
+        }
+      }
+    },
     "Keep RAW+JPEG pairs together": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1004,11 +1133,22 @@
       }
     },
     "Keep the zoom when moving to the next image": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "切换到下一张时保持缩放"
+          }
+        }
+      }
+    },
+    "Keep zoom between images": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "切换图片时保持缩放"
           }
         }
       }
@@ -1120,6 +1260,7 @@
       }
     },
     "Match the system": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1180,6 +1321,7 @@
       }
     },
     "Move the file (⇧ copies)": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1289,7 +1431,18 @@
         }
       }
     },
+    "None yet.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "还没有。"
+          }
+        }
+      }
+    },
     "Not set": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1310,6 +1463,7 @@
       }
     },
     "Number keys": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1325,6 +1479,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "按数字键可以把文件移进分拣文件夹。"
+          }
+        }
+      }
+    },
+    "Number keys:": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "数字键："
           }
         }
       }
@@ -1389,7 +1553,18 @@
         }
       }
     },
+    "Open large images at 100%": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "大图以 100% 打开"
+          }
+        }
+      }
+    },
     "Open large images at actual size": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1425,6 +1600,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "其他文件夹…"
+          }
+        }
+      }
+    },
+    "Pairs:": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "成对文件："
           }
         }
       }
@@ -1700,6 +1885,7 @@
       }
     },
     "Settings": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1740,6 +1926,7 @@
       }
     },
     "Shortcuts": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1820,6 +2007,7 @@
       }
     },
     "Show file names under thumbnails": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1835,6 +2023,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "在访达中显示"
+          }
+        }
+      }
+    },
+    "Show names": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示文件名"
           }
         }
       }
@@ -1890,6 +2088,7 @@
       }
     },
     "Size on disk": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1925,6 +2124,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "幻灯片，每张 %@ 秒"
+          }
+        }
+      }
+    },
+    "Slideshow:": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "幻灯片："
           }
         }
       }
@@ -2000,6 +2209,7 @@
       }
     },
     "Start over after the last image": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -2111,11 +2321,22 @@
       }
     },
     "Thumbnail cache": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "缩略图缓存"
+          }
+        }
+      }
+    },
+    "Thumbnail cache:": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "缩略图缓存："
           }
         }
       }
@@ -2191,11 +2412,22 @@
       }
     },
     "Viewer": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "看图"
+          }
+        }
+      }
+    },
+    "Viewer:": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "看图："
           }
         }
       }

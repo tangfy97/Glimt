@@ -23,12 +23,20 @@ final class Snapshot {
                 try? await Task.sleep(for: .seconds(1.5))
                 capture("viewer")
             }
+            if ProcessInfo.processInfo.environment["GLIMT_SNAPSHOT_SETTINGS"] != nil {
+                for (index, tab) in SettingsWindowController.Tab.allCases.enumerated() {
+                    SettingsWindowController.shared.show(tab: tab)
+                    try? await Task.sleep(for: .seconds(1))
+                    capture("settings-\(index)", of: SettingsWindowController.shared.window)
+                }
+            }
             NSApp.terminate(nil)
         }
     }
 
-    private func capture(_ name: String) {
-        guard let view = window.window?.contentView, let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return }
+    /// SwiftUI panes don't render through `cacheDisplay` in dark mode; check those in light mode.
+    private func capture(_ name: String, of target: NSWindow? = nil) {
+        guard let view = (target ?? window.window)?.contentView, let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return }
         view.cacheDisplay(in: view.bounds, to: rep)
         let url = URL(fileURLWithPath: "\(prefix)-\(name).png")
         try? rep.representation(using: .png, properties: [:])?.write(to: url)
