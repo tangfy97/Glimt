@@ -17,6 +17,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Hosting unit tests: no windows, no restored folder.
+        guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else { return }
         let main = frontWindow()
         main.showWindow(nil)
         let launchMs = ProcessMetrics.millisecondsSinceProcessStart()
@@ -80,6 +82,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         main.open(url)
     }
 
+    @objc func showAbout(_ sender: Any?) {
+        NSApp.orderFrontStandardAboutPanel(options: [.credits: AppInfo.aboutCredits])
+    }
+
+    @objc func openRepository(_ sender: Any?) { NSWorkspace.shared.open(AppInfo.Link.repository) }
+    @objc func reportProblem(_ sender: Any?) { NSWorkspace.shared.open(AppInfo.Link.issues) }
+    @objc func openStudio(_ sender: Any?) { NSWorkspace.shared.open(AppInfo.Link.studio) }
+
     @objc func clearRecents(_ sender: Any?) {
         Preferences.clearRecents()
     }
@@ -130,5 +140,5 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 }
 
 enum Log {
-    static let app = Logger(subsystem: "com.feiyangtang.Glimt", category: "app")
+    static let app = Logger(subsystem: AppInfo.identifier, category: "app")
 }

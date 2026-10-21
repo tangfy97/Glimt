@@ -80,6 +80,12 @@ enum ImageDecoder {
             kCGImageSourceShouldCacheImmediately: true,
             kCGImageSourceThumbnailMaxPixelSize: Int(max(target, 1)),
         ]
+        if level == .quick || (level == .preview && isRaw(source)) {
+            // Embedded thumbnail only. Both flags must be false explicitly: left unset, ImageIO
+            // quietly decodes the whole image to make a thumbnail, which defeats the quick rung.
+            options[kCGImageSourceCreateThumbnailFromImageIfAbsent] = false
+            options[kCGImageSourceCreateThumbnailFromImageAlways] = false
+        }
         var image: CGImage?
         if level == .preview, isRaw(source) {
             // Like Photo Mechanic: a RAW file's embedded JPEG preview is usually large enough for
@@ -87,8 +93,10 @@ enum ImageDecoder {
             image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
             if let embedded = image, CGFloat(max(embedded.width, embedded.height)) < target * 0.6 { image = nil }
         }
-        if image == nil {
-            if level != .quick { options[kCGImageSourceCreateThumbnailFromImageAlways] = true }
+        if level == .quick {
+            image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
+        } else if image == nil {
+            options[kCGImageSourceCreateThumbnailFromImageAlways] = true
             image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
         }
         guard let image, let surface = makeSurface(from: image) else { return nil }

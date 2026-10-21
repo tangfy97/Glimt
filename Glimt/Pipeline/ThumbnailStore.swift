@@ -37,7 +37,7 @@ final class ThumbnailStore {
 
     nonisolated static let cacheDirectory: URL = {
         let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
-        return caches.appendingPathComponent("com.feiyangtang.Glimt/Thumbnails", isDirectory: true)
+        return caches.appendingPathComponent(AppInfo.identifier, isDirectory: true).appendingPathComponent("Thumbnails", isDirectory: true)
     }()
 
     static func pixels(forPoints points: CGFloat, scale: CGFloat) -> Int {

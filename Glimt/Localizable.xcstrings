@@ -921,6 +921,16 @@
         }
       }
     },
+    "Glimt on GitHub": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub 上的 Glimt"
+          }
+        }
+      }
+    },
     "Go": {
       "localizations": {
         "zh-Hans": {
@@ -1255,6 +1265,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "循环"
+          }
+        }
+      }
+    },
+    "Made by TangSpark": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TangSpark 出品"
+          }
+        }
+      }
+    },
+    "Made in Norway by TangSpark.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TangSpark 在挪威制作。"
           }
         }
       }
@@ -1784,6 +1814,16 @@
         }
       }
     },
+    "Report a Problem…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "报告问题…"
+          }
+        }
+      }
+    },
     "Rotate 180°": {
       "localizations": {
         "zh-Hans": {
@@ -1885,7 +1925,6 @@
       }
     },
     "Settings": {
-      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -2184,6 +2223,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "分拣"
+          }
+        }
+      }
+    },
+    "Source code": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "源代码"
           }
         }
       }

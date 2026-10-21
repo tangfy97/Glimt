@@ -389,7 +389,7 @@ final class FolderColumnTable: NSTableView {
 
 /// Marks the selected folders with a small tick in the left margin, like a bookmark tab: grey
 /// for the folders along the path, the accent colour for the open folder. (Chosen over a filled
-/// pill and four other styles; see Design/highlight-options.png.)
+/// pill and four other styles; see docs/design/highlight-options.png.)
 final class FolderRowView: NSTableRowView {
     /// This row's column holds the open folder.
     var isCurrent = false

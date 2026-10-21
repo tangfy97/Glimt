@@ -1,0 +1,18 @@
+name: Idea
+description: Suggest something Glimt could do.
+labels: [idea]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The task or situation, in your own words. This matters more than a proposed solution.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help
+  - type: markdown
+    attributes:
+      value: Glimt stays small on purpose (see docs/DESIGN.md), so not every good idea will fit. Thank you for suggesting it anyway.

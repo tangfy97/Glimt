@@ -1,0 +1,33 @@
+name: Bug report
+description: Something doesn't work as it should.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open a folder with …
+        2. Press …
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Glimt and macOS versions
+      description: Glimt ▸ About Glimt, and  ▸ About This Mac.
+      placeholder: Glimt 0.1.0, macOS 15.2, Apple M2
+    validations:
+      required: true
+  - type: textarea
+    id: files
+    attributes:
+      label: Files involved
+      description: Kinds and rough sizes of the files (for example "50 MP Sony ARW + JPEG pairs, 3,000 files"). Please don't attach private photos.

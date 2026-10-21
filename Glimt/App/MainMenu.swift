@@ -18,6 +18,11 @@ enum MainMenu {
         NSApp.windowsMenu = window
         let help = NSMenu(title: String(localized: "Help"))
         help.addItem(item(String(localized: "Keyboard Shortcuts"), #selector(Main.showShortcuts(_:)), "/", [.command]))
+        help.addItem(.separator())
+        help.addItem(withTitle: String(localized: "Glimt on GitHub"), action: #selector(AppDelegate.openRepository(_:)), keyEquivalent: "")
+        help.addItem(withTitle: String(localized: "Report a Problem…"), action: #selector(AppDelegate.reportProblem(_:)), keyEquivalent: "")
+        help.addItem(.separator())
+        help.addItem(withTitle: String(localized: "Made by TangSpark"), action: #selector(AppDelegate.openStudio(_:)), keyEquivalent: "")
         main.addItem(submenu(help))
         NSApp.helpMenu = help
         return main
@@ -25,7 +30,7 @@ enum MainMenu {
 
     private static func appMenu() -> NSMenu {
         let menu = NSMenu(title: "Glimt")
-        menu.addItem(withTitle: String(localized: "About Glimt"), action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        menu.addItem(withTitle: String(localized: "About Glimt"), action: #selector(AppDelegate.showAbout(_:)), keyEquivalent: "")
         menu.addItem(.separator())
         menu.addItem(withTitle: String(localized: "Settings…"), action: #selector(AppDelegate.showSettings(_:)), keyEquivalent: ",")
         menu.addItem(.separator())

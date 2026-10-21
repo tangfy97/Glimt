@@ -3,7 +3,7 @@ import os
 
 /// Points of Interest in Instruments: "Decode" and "Page Turn" intervals.
 enum Signposts {
-    static let signposter = OSSignposter(subsystem: "com.feiyangtang.Glimt", category: .pointsOfInterest)
+    static let signposter = OSSignposter(subsystem: AppInfo.identifier, category: .pointsOfInterest)
 }
 
 enum ProcessMetrics {
