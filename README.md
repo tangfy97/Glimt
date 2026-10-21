@@ -14,7 +14,7 @@ xcodegen generate
 ```
 
 ```bash
-xcodebuild -project Glimt.xcodeproj -scheme Glimt -configuration Release -derivedDataPath build/dd build
+xcodebuild -project Glimt.xcodeproj -scheme Glimt -configuration Release -derivedDataPath build/DerivedData.noindex build
 ```
 
 ## 功能
@@ -82,7 +82,7 @@ scripts/bench.sh .fixtures/10k 150 120
 文件操作的端到端自检（移动 / 复制 / 废纸篓 / 重命名 / 旋转 / 标签及其撤销重做、搜索）：
 
 ```bash
-GLIMT_SELFTEST=1 build/dd/Build/Products/Release/Glimt.app/Contents/MacOS/Glimt
+GLIMT_SELFTEST=1 build/DerivedData.noindex/Build/Products/Release/Glimt.app/Contents/MacOS/Glimt
 ```
 
 **尚未验证**：捏合、智能缩放、双指横扫、拖放、转场动画的观感需要真机手动操作；"0 掉帧"需要 Instruments 的 Animation Hitches 实测。
