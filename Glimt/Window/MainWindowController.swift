@@ -26,6 +26,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
     var enteredFullScreenForSlideshow = false
     var searchItem: NSSearchToolbarItem?
     var sizeSlider: NSSlider?
+    private var preferencesObserver: NSObjectProtocol?
 
     var onOpenedURL: ((URL) -> Void)?
     var onClose: ((MainWindowController) -> Void)?
@@ -109,7 +110,11 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         toolbar.autosavesConfiguration = true
         window.toolbar = toolbar
 
-        NotificationCenter.default.addObserver(self, selector: #selector(preferencesChanged), name: UserDefaults.didChangeNotification, object: nil)
+        // Posted on whichever thread changed a default. ImageIO's RAW plugin registers its own
+        // defaults on a decode thread the first time it reads a RAW file, so hop to the main thread.
+        preferencesObserver = NotificationCenter.default.addObserver(forName: UserDefaults.didChangeNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.preferencesChanged() }
+        }
         NotificationCenter.default.addObserver(self, selector: #selector(folderAccessChanged), name: .folderAccessDidChange, object: nil)
         updateChrome()
     }
@@ -344,6 +349,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
     }
 
     func windowWillClose(_ notification: Notification) {
+        preferencesObserver.map(NotificationCenter.default.removeObserver)
         viewer.deactivate()
         onClose?(self)
     }

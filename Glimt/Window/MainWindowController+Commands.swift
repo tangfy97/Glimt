@@ -393,7 +393,7 @@ extension MainWindowController {
         viewer.startSlideshow(only: selection)
     }
 
-    @objc func preferencesChanged() {
+    func preferencesChanged() {
         browser.applyPreferences()
         if rootView.showsSortBar != Preferences.showSortBar && !viewer.isSlideshowRunning {
             rootView.showsSortBar = Preferences.showSortBar

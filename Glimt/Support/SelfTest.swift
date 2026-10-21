@@ -49,6 +49,10 @@ final class SelfTest {
         window.open(photos)
         await until("folder loads with 3 images") { self.window.model.media.count == 3 }
 
+        // ImageIO's RAW plugin registers defaults on a decode thread; that must not crash the window.
+        await Task.detached { UserDefaults.standard.register(defaults: ["GlimtSelfTestBackgroundDefault": true]) }.value
+        await until("a default registered off the main thread is handled") { UserDefaults.standard.bool(forKey: "GlimtSelfTestBackgroundDefault") }
+
         let a = photos.appendingPathComponent("a.jpg")
         let b = photos.appendingPathComponent("b.jpg")
         let c = photos.appendingPathComponent("c.jpg")
