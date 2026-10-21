@@ -18,9 +18,10 @@ The second argument is the build number, which must go up with every upload. Wit
 
 | Field | Value |
 |---|---|
+| App Store Connect | Apple ID 6825414107 |
 | Bundle ID | `com.feiyangtang.Glimt` |
 | SKU | `glimt-macos` |
-| Primary category | Photography |
+| Primary category | Photo & Video |
 | Secondary category | Utilities |
 | Price | Free |
 | Age rating | 4+ (no objectionable content) |
@@ -33,8 +34,7 @@ The second argument is the build number, which must go up with every upload. Wit
 
 ### English (U.S.)
 
-**Name** (30): Glimt
-If the name is taken: `Glimt – Photo Viewer & Sorter`
+**Name** (30): Glimt – Photo Viewer & Sorter (plain "Glimt" is taken on the App Store)
 
 **Subtitle** (30): Fast photo viewer and sorter
 
@@ -83,9 +83,9 @@ Glimt is free and open source under the Apache License 2.0. It is made by TangSp
 
 ### Simplified Chinese
 
-**名称**：Glimt
+**名称**：Glimt – 看图与照片分拣
 
-**副标题**（30）：快速看图与照片分拣
+**副标题**（30）：快速翻看，数字键分拣
 
 **推广文本**（170）：
 打开文件夹，看一眼，按数字键，下一张。Glimt 翻看全尺寸照片无需等待，边看边把照片分拣进文件夹。
