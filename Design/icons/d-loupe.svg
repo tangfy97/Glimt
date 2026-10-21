@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <clipPath id="photo"><rect x="190" y="250" width="540" height="420" rx="24"/></clipPath>
+    <clipPath id="lens"><circle cx="650" cy="610" r="150"/></clipPath>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="#F3EFE7"/>
+  <g clip-path="url(#photo)">
+    <rect x="190" y="250" width="540" height="420" fill="#C9D7E0"/>
+    <circle cx="560" cy="380" r="44" fill="#E07A4F"/>
+    <path d="M190 670 L340 480 L430 570 L540 450 L730 640 V670Z" fill="#50687F"/>
+    <path d="M540 450 L578 490 L540 510 L504 490Z" fill="#FBFAF7"/>
+  </g>
+  <g clip-path="url(#lens)">
+    <g transform="translate(650 610) scale(1.7) translate(-650 -610)">
+      <rect x="190" y="250" width="540" height="420" fill="#C9D7E0"/>
+      <circle cx="560" cy="380" r="44" fill="#E07A4F"/>
+      <path d="M190 670 L340 480 L430 570 L540 450 L730 640 V670Z" fill="#50687F"/>
+      <path d="M540 450 L578 490 L540 510 L504 490Z" fill="#FBFAF7"/>
+    </g>
+  </g>
+  <circle cx="650" cy="610" r="150" fill="none" stroke="#B98B5E" stroke-width="40"/>
+  <rect x="770" y="720" width="56" height="180" rx="28" fill="#6B4B33" transform="rotate(-45 798 810)"/>
+</svg>

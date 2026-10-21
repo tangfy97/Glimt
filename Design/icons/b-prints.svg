@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs><clipPath id="photo"><rect x="272" y="328" width="480" height="380" rx="6"/></clipPath></defs>
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="#E7DFD0"/>
+  <rect x="246" y="262" width="532" height="520" rx="18" fill="#CFC2AA" transform="rotate(-9 512 522)"/>
+  <g transform="rotate(4 512 560)">
+    <rect x="236" y="292" width="552" height="540" rx="18" fill="#FCFAF6"/>
+    <g clip-path="url(#photo)">
+      <rect x="272" y="328" width="480" height="380" fill="#B9CCD8"/>
+      <circle cx="626" cy="440" r="48" fill="#E9A84B"/>
+      <path d="M272 708 L410 520 L492 610 L590 492 L752 690 V708Z" fill="#3D566D"/>
+    </g>
+  </g>
+</svg>

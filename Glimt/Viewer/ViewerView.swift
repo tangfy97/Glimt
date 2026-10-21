@@ -1,4 +1,5 @@
 import AppKit
+import AVKit
 
 enum Navigation {
     case next, previous, first, last
@@ -12,10 +13,13 @@ protocol ViewerViewDelegate: AnyObject {
     /// A pinch, smart zoom or zoom command has come to rest.
     func viewerDidSettleZoom(_ viewer: ViewerView)
     func viewer(_ viewer: ViewerView, open url: URL)
+    func viewerPressedSpace(_ viewer: ViewerView, shift: Bool)
+    /// Return false to let Escape fall through (e.g. to leave full screen).
+    func viewerPressedEscape(_ viewer: ViewerView) -> Bool
 }
 
-/// The window's content: zoomable image, overlays, keyboard and drop handling.
-/// It knows nothing about folders or decoding; the window controller feeds it bitmaps.
+/// Zoomable image (or video), overlays, keyboard and drop handling. It knows nothing about
+/// folders or decoding; the viewer controller feeds it bitmaps.
 final class ViewerView: NSView {
     weak var delegate: ViewerViewDelegate?
 
@@ -28,6 +32,11 @@ final class ViewerView: NSView {
     private var sourceSize: CGSize = .zero
     private var contentsLongestSide = 0
     private var zoomAnimation: MagnificationAnimation?
+    private var playerView: AVPlayerView?
+
+    var usesFullScreenBackground = false {
+        didSet { needsDisplay = true }
+    }
 
     private(set) var isFitMode = true
     private(set) var isLiveMagnifying = false
@@ -84,16 +93,34 @@ final class ViewerView: NSView {
 
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
 
-    override func viewDidMoveToWindow() {
-        super.viewDidMoveToWindow()
+    override var wantsUpdateLayer: Bool { true }
+
+    override func updateLayer() {
+        layer?.backgroundColor = (usesFullScreenBackground ? Palette.fullScreenBackground : Palette.viewerBackground).cgColor
+    }
+
+    func focus() {
         window?.makeFirstResponder(scrollView)
+    }
+
+    /// Hides the picture (not the backdrop) while a transition layer stands in for it.
+    func setContentHidden(_ hidden: Bool) {
+        scrollView.isHidden = hidden
+        playerView?.alphaValue = hidden ? 0 : 1
+    }
+
+    /// The image area: below the toolbar in a window, the whole screen in full screen.
+    private var contentArea: NSRect {
+        guard let window else { return bounds }
+        let area = convert(window.contentLayoutRect, from: nil).intersection(bounds)
+        return area.isEmpty ? bounds : area
     }
 
     override func layout() {
         super.layout()
-        // Below the (transparent) title bar in a window; the whole screen in full screen.
-        let area = window?.contentLayoutRect ?? bounds
+        let area = contentArea
         if scrollView.frame != area { scrollView.frame = area }
+        playerView?.frame = area
         updateMagnificationLimits(refit: isFitMode)
     }
 
@@ -103,6 +130,7 @@ final class ViewerView: NSView {
     /// needed; an explicit outermost one would also force a synchronous commit right here.
     func display(_ image: DecodedImage, resetZoom: Bool) {
         placeholder.isHidden = true
+        hideVideo()
         let sourceSize = image.sourceSize
         if resetZoom || sourceSize != self.sourceSize {
             zoomAnimation?.stop()
@@ -113,15 +141,76 @@ final class ViewerView: NSView {
             updateMagnificationLimits(refit: true)
             clipView.setBoundsOrigin(clipView.constrainBoundsRect(clipView.bounds).origin)
         }
-        canvas.setSurface(image.surface)
+        canvas.setContents(image.surface)
         contentsLongestSide = image.longestSide
         updateFilter()
+    }
+
+    /// One frame of an animated image, same geometry as the decoded first frame.
+    func displayAnimationFrame(_ frame: CGImage) {
+        guard hasImage else { return }
+        canvas.setContents(frame)
+        contentsLongestSide = max(frame.width, frame.height)
+    }
+
+    // MARK: - Video
+
+    func showVideo(_ url: URL) {
+        clearImage()
+        placeholder.isHidden = true
+        let playerView = self.playerView ?? {
+            let view = AVPlayerView()
+            view.controlsStyle = .floating
+            view.showsFullScreenToggleButton = false
+            view.videoGravity = .resizeAspect
+            addSubview(view, positioned: .above, relativeTo: scrollView)
+            self.playerView = view
+            return view
+        }()
+        playerView.frame = contentArea
+        playerView.isHidden = false
+        let player = AVPlayer(url: url)
+        playerView.player = player
+        player.play()
+        focus()
+    }
+
+    func hideVideo() {
+        guard let playerView, !playerView.isHidden else { return }
+        playerView.player?.pause()
+        playerView.player = nil
+        playerView.isHidden = true
+    }
+
+    var isShowingVideo: Bool { playerView?.isHidden == false }
+
+    func toggleVideoPlayback() {
+        guard let player = playerView?.player else { return }
+        if player.rate == 0 { player.play() } else { player.pause() }
+    }
+
+    // MARK: - Transition geometry
+
+    /// Where an image of `size` sits when fitted, in this view's coordinates.
+    func fitRect(for size: CGSize) -> NSRect {
+        let area = contentArea
+        guard size.width > 0, size.height > 0 else { return area }
+        var scale = min(area.width / size.width, area.height / size.height)
+        if !Preferences.upscaleSmallImages { scale = min(scale, 1) }
+        let fitted = CGSize(width: size.width * scale, height: size.height * scale)
+        return NSRect(x: area.midX - fitted.width / 2, y: area.midY - fitted.height / 2, width: fitted.width, height: fitted.height)
+    }
+
+    /// The displayed picture's rect and contents, when it is shown whole (not zoomed in).
+    var fittedImage: (rect: NSRect, contents: Any)? {
+        guard hasImage, isFitMode, !isShowingVideo, let contents = canvas.layer?.contents else { return nil }
+        return (fitRect(for: sourceSize), contents)
     }
 
     func showPlaceholder(_ content: PlaceholderView.Content) {
         zoomAnimation?.stop()
         zoomAnimation = nil
-        canvas.setSurface(nil)
+        canvas.setContents(nil)
         sourceSize = .zero
         contentsLongestSide = 0
         placeholder.show(content)
@@ -133,7 +222,7 @@ final class ViewerView: NSView {
         guard hasImage else { return }
         zoomAnimation?.stop()
         zoomAnimation = nil
-        canvas.setSurface(nil)
+        canvas.setContents(nil)
         sourceSize = .zero
         contentsLongestSide = 0
     }
@@ -147,8 +236,9 @@ final class ViewerView: NSView {
     var fitMagnification: CGFloat {
         let available = scrollView.contentSize
         guard hasImage, available.width > 0, available.height > 0 else { return 1 }
-        // Never enlarge past 100% just to fill the window.
-        return min(available.width / sourceSize.width, available.height / sourceSize.height, 1)
+        let fit = min(available.width / sourceSize.width, available.height / sourceSize.height)
+        // Small images stay at 100% unless the user asked to enlarge them.
+        return Preferences.upscaleSmallImages ? fit : min(fit, 1)
     }
 
     func zoomToFit(animated: Bool = true) {
@@ -258,7 +348,9 @@ final class ViewerView: NSView {
     // Window views see key events before the main menu does, so bare keys like the arrows
     // are handled here and never flash the menu bar on every page turn.
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
-        handleKey(event) || super.performKeyEquivalent(with: event)
+        // Only while the viewer is on screen; otherwise the grid owns the arrow keys.
+        guard !isHiddenOrHasHiddenAncestor else { return false }
+        return handleKey(event) || super.performKeyEquivalent(with: event)
     }
 
     override func keyDown(with event: NSEvent) {
@@ -284,14 +376,11 @@ final class ViewerView: NSView {
         case NSEndFunctionKey:
             navigate(.last)
         case 0x20:
-            navigate(shift ? .previous : .next)
+            delegate?.viewerPressedSpace(self, shift: shift)
         case 0x1B:
-            if window?.styleMask.contains(.fullScreen) == true {
+            if delegate?.viewerPressedEscape(self) != true {
+                guard window?.styleMask.contains(.fullScreen) == true else { return false }
                 window?.toggleFullScreen(nil)
-            } else if !isFitMode {
-                zoomToFit()
-            } else {
-                return false
             }
         case 0x66 where !shift: // f
             window?.toggleFullScreen(nil)

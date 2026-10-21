@@ -86,8 +86,9 @@ final class ImageCanvasView: NSView {
     override var wantsUpdateLayer: Bool { true }
     override func updateLayer() {}
 
-    func setSurface(_ surface: IOSurface?) {
-        layer?.contents = surface
+    /// An IOSurface for decoded stills, a CGImage for animation frames.
+    func setContents(_ contents: Any?) {
+        layer?.contents = contents
     }
 
     /// Nearest-neighbour once each source pixel covers several screen pixels, for pixel peeping.

@@ -31,6 +31,8 @@ struct DecodedImage: @unchecked Sendable {
     let surface: IOSurface
     /// The source's oriented pixel size, whatever resolution this particular decode is.
     let sourceSize: CGSize
+    /// More than one for animated GIF, PNG, WebP and HEIC sequences.
+    var frameCount = 1
 
     var longestSide: Int { max(surface.width, surface.height) }
     var byteCost: Int { surface.allocationSize }
@@ -82,10 +84,10 @@ enum ImageDecoder {
         }
         guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary),
               let surface = makeSurface(from: image) else { return nil }
-        return DecodedImage(surface: surface, sourceSize: size)
+        return DecodedImage(surface: surface, sourceSize: size, frameCount: CGImageSourceGetCount(source))
     }
 
-    private static func orientedSize(of source: CGImageSource) -> CGSize? {
+    static func orientedSize(of source: CGImageSource) -> CGSize? {
         guard let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
               let width = (properties[kCGImagePropertyPixelWidth] as? NSNumber)?.doubleValue,
               let height = (properties[kCGImagePropertyPixelHeight] as? NSNumber)?.doubleValue,
@@ -97,7 +99,7 @@ enum ImageDecoder {
 
     /// Draws into a BGRA Display P3 surface, which also normalises 16-bit, CMYK and indexed
     /// sources so the render server never has to convert anything.
-    private static func makeSurface(from image: CGImage) -> IOSurface? {
+    static func makeSurface(from image: CGImage) -> IOSurface? {
         let width = image.width, height = image.height
         let properties: [IOSurfacePropertyKey: any Sendable] = [
             .width: width,

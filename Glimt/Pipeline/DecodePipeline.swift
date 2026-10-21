@@ -79,6 +79,25 @@ final class DecodePipeline {
 
     func hasFailed(_ url: URL) -> Bool { failed.contains(url) }
 
+    /// Offers an already-decoded image (e.g. the grid's thumbnail) as a rung for `url`.
+    func seed(_ image: DecodedImage, for url: URL, level: DecodeLevel) {
+        let key = Key(url: url, level: level)
+        guard !cache.contains(key) else { return }
+        cache.insert(image, for: key, cost: image.byteCost)
+    }
+
+    /// Forgets everything about `url`, e.g. after it was rotated.
+    func invalidate(_ url: URL) {
+        for (key, entry) in inFlight where key.url == url {
+            entry.operation.cancel()
+            entry.flag.cancel()
+            inFlight[key] = nil
+        }
+        cache.removeAll { $0.url == url }
+        failed.remove(url)
+        withoutThumbnail.remove(url)
+    }
+
     /// Makes `requests` the complete set of wanted decodes: starts what is missing,
     /// re-prioritises what is queued, and cancels everything else (e.g. images the
     /// user already paged past). Wanted keys are also protected from eviction.

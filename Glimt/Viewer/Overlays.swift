@@ -1,7 +1,17 @@
 import AppKit
 
+/// Warm paper in light mode, soft charcoal in dark mode.
 enum Palette {
-    static let background = NSColor(srgbRed: 0.075, green: 0.075, blue: 0.08, alpha: 1)
+    static let gridBackground = NSColor(name: nil) { appearance in
+        appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+            ? NSColor(srgbRed: 0.105, green: 0.105, blue: 0.11, alpha: 1)
+            : NSColor(srgbRed: 0.965, green: 0.957, blue: 0.94, alpha: 1)
+    }
+    static let viewerBackground = NSColor(name: nil) { appearance in
+        appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+            ? NSColor(srgbRed: 0.07, green: 0.07, blue: 0.075, alpha: 1)
+            : NSColor(srgbRed: 0.925, green: 0.918, blue: 0.9, alpha: 1)
+    }
     static let fullScreenBackground = NSColor.black
 }
 
@@ -59,6 +69,7 @@ final class PlaceholderView: NSView {
         case welcome
         case loading
         case noImages(folder: String)
+        case noMatches
         case unreadable(file: String)
     }
 
@@ -113,6 +124,10 @@ final class PlaceholderView: NSView {
             symbol = "questionmark.folder"
             title.stringValue = String(localized: "No images in “\(folder)”")
             detail.stringValue = String(localized: "Drop another folder here, or press ⌘O.")
+        case .noMatches:
+            symbol = "magnifyingglass"
+            title.stringValue = String(localized: "Nothing matches")
+            detail.stringValue = String(localized: "Try another search or filter.")
         case .unreadable(let file):
             symbol = "exclamationmark.triangle"
             title.stringValue = String(localized: "Can’t open “\(file)”")

@@ -7,7 +7,8 @@ import AppKit
 /// moment the frame is handed to the render server.
 @MainActor
 final class Benchmark {
-    private let viewer: ViewerWindowController
+    private let window: MainWindowController
+    private var viewer: ViewerController { window.viewer }
     private let launchMs: Double
     private let steps: Int
     private let interval: Duration
@@ -24,10 +25,10 @@ final class Benchmark {
     private var fullStart: CFTimeInterval?
     private var fullMs: Double?
 
-    init?(viewer: ViewerWindowController, launchMs: Double) {
+    init?(window: MainWindowController, launchMs: Double) {
         let environment = ProcessInfo.processInfo.environment
         guard let steps = environment["GLIMT_BENCH"].flatMap(Int.init), steps > 0 else { return nil }
-        self.viewer = viewer
+        self.window = window
         self.launchMs = launchMs
         self.steps = steps
         self.interval = .milliseconds(environment["GLIMT_BENCH_INTERVAL_MS"].flatMap(Int.init) ?? 120)
@@ -42,9 +43,19 @@ final class Benchmark {
         NSApp.activate()
         print(String(format: "launch → window: %.1f ms", launchMs))
         viewer.onImageShown = { [weak self] url, level in self?.imageShown(url, level) }
-        viewer.onItemsLoaded = { [weak self] count, scanMs in
-            print(String(format: "scan: %d images in %.1f ms", count, scanMs))
-            self?.run()
+        window.onFolderLoaded = { [weak self] in
+            guard let self else { return }
+            self.window.onFolderLoaded = nil
+            print(String(format: "scan: %d items in %.1f ms", self.window.model.media.count, self.window.model.lastScanMilliseconds))
+            Task {
+                let started = CACurrentMediaTime()
+                while !self.window.browser.visibleThumbnailsLoaded, CACurrentMediaTime() - started < 10 {
+                    try? await Task.sleep(for: .milliseconds(2))
+                }
+                print(String(format: "grid: visible thumbnails in %.1f ms", (CACurrentMediaTime() - started) * 1000))
+                self.window.openViewer(at: 0, animated: false)
+                self.run()
+            }
         }
     }
 
@@ -79,7 +90,7 @@ final class Benchmark {
             try? await Task.sleep(for: .milliseconds(500))
             for _ in 0..<steps {
                 guard viewer.index + 1 < viewer.items.count else { break }
-                let next = viewer.items[viewer.index + 1]
+                let next = viewer.items[viewer.index + 1].url
                 if viewer.isCached(next) { prefetched += 1 }
                 turns += 1
                 target = next
@@ -92,7 +103,7 @@ final class Benchmark {
             viewer.navigate(.first)
             try? await Task.sleep(for: .milliseconds(500))
             fullStart = CACurrentMediaTime()
-            viewer.zoomToActualSize(nil)
+            viewer.zoomToActualSize()
             try? await Task.sleep(for: .seconds(2))
             report()
             NSApp.terminate(nil)
