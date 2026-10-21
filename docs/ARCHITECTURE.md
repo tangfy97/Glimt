@@ -7,7 +7,8 @@ Glimt is a single-target AppKit app written in Swift 6 with strict concurrency. 
 ```
 Glimt/
   App/        Entry point, menus, preferences, sort targets, Finder tags, app identity and links
-  Library/    Item, FolderScanner, FolderModel, FileOperations (every change to files, with undo)
+  Library/    Item, FolderScanner, FolderModel, FileOperations (every change to files, with undo),
+              FolderAccess (sandbox permissions for the App Store build)
   Pipeline/   ImageDecoder, DecodePipeline (viewer), ThumbnailStore (grid, memory + disk cache)
   Browser/    Thumbnail grid (layout, cells, controller) and the folder columns
   Viewer/     ViewerController, ViewerView, zooming scroll view, overlays, shortcut list
@@ -45,6 +46,8 @@ The controller is split across files by concern: `MainWindowController.swift` (w
 `FileOperations` updates the model first, so the interface moves on immediately, then performs the work on one serial queue, in the order operations were issued. Each operation registers its inverse with the undo manager synchronously. That is what makes undo and redo correct even while work is still in flight. Work is queued synchronously at the call site: starting a `Task` first would let two operations issued back to back reach the queue in either order.
 
 RAW+JPEG pairs, Live Photo movies and `.xmp`/`.aae` sidecars are found by base name and moved, copied, renamed and trashed together.
+
+The App Store build runs in the App Sandbox; the GitHub build does not. `FolderAccess` is the only code that knows the difference. It keeps a security-scoped bookmark for every folder the user hands over (an open panel, a drop, Finder, a sort folder) and starts using them all at launch. When a folder comes back empty because the sandbox kept Glimt out, the window shows Allow Access… instead of "no images". Inside the sandbox `homeDirectoryForCurrentUser` is the app's container, so the real home folder, and `~` in displayed paths, come from `FolderAccess.home`. See [APP_STORE.md](APP_STORE.md).
 
 ## Images
 

@@ -170,6 +170,7 @@ final class SortTargets {
 
     func set(_ folder: URL?, at slot: Int) {
         guard folders.indices.contains(slot) else { return }
+        if let folder { FolderAccess.remember(folder) }
         folders[slot] = folder
         UserDefaults.standard.set(folders.map { $0?.path ?? "" }, forKey: Preferences.Key.sortTargets)
         NotificationCenter.default.post(name: .sortTargetsDidChange, object: self)

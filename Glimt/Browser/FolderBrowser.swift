@@ -108,15 +108,18 @@ final class FolderBrowserController: NSObject {
         for name in [NSWorkspace.didMountNotification, NSWorkspace.didUnmountNotification, NSWorkspace.didRenameVolumeNotification] {
             center.addObserver(self, selector: #selector(volumesChanged(_:)), name: name, object: nil)
         }
+        // Folders listed before permission was given came back empty; list them again.
+        NotificationCenter.default.addObserver(self, selector: #selector(volumesChanged(_:)), name: .folderAccessDidChange, object: nil)
     }
 
     // MARK: - Roots
 
     private func reloadRoots() {
         let fileManager = FileManager.default
-        let home = fileManager.homeDirectoryForCurrentUser
+        let home = FolderAccess.home
+        // In the sandbox Glimt can't look at these before it is allowed in; they always exist.
         let places = ([home] + ["Desktop", "Documents", "Downloads", "Pictures", "Movies"].map { home.appendingPathComponent($0) })
-            .filter { fileManager.fileExists(atPath: $0.path) }
+            .filter { FolderAccess.isSandboxed || fileManager.fileExists(atPath: $0.path) }
         let volumes = fileManager.mountedVolumeURLs(includingResourceValuesForKeys: [.volumeLocalizedNameKey], options: [.skipHiddenVolumes]) ?? []
         placeCount = places.count
         root.children = (places + volumes).map { url in
@@ -358,7 +361,7 @@ final class FolderColumn: NSObject, NSTableViewDataSource, NSTableViewDelegate {
             return cell
         }()
         cell.textField?.stringValue = node.title
-        cell.toolTip = (node.url.path as NSString).abbreviatingWithTildeInPath
+        cell.toolTip = FolderAccess.abbreviated(node.url.path)
         return cell
     }
 

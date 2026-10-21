@@ -83,6 +83,10 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         viewer.view.isHidden = true
         emptyState.show(.welcome)
         emptyState.onOpen = { [weak self] url in self?.open(url) }
+        emptyState.onAllowAccess = { [weak self] folder in
+            guard let self else { return }
+            Task { _ = await FolderAccess.request(folder, attachedTo: self.window) }
+        }
 
         sizeSlider?.target = self
         sizeSlider?.action = #selector(thumbnailSliderChanged(_:))
@@ -106,6 +110,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         window.toolbar = toolbar
 
         NotificationCenter.default.addObserver(self, selector: #selector(preferencesChanged), name: UserDefaults.didChangeNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(folderAccessChanged), name: .folderAccessDidChange, object: nil)
         updateChrome()
     }
 
@@ -117,6 +122,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
     func open(_ url: URL) {
         let isDirectory = (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
         let folder = isDirectory ? url : url.deletingLastPathComponent()
+        FolderAccess.remember(folder)
         onOpenedURL?(url)
         Preferences.noteRecent(url)
         if !isNavigatingHistory, history.indices.contains(historyIndex) ? history[historyIndex].standardizedFileURL != folder.standardizedFileURL : true {
@@ -149,12 +155,22 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         } else if model.folder == nil {
             emptyState.show(.welcome)
         } else if (model.folders.isEmpty || !browser.showsFolderTiles) && model.media.isEmpty {
-            emptyState.show(model.isFiltered ? .noMatches : .noImages(folder: model.folder?.lastPathComponent ?? ""))
+            if let folder = model.folder, !FolderAccess.canRead(folder) {
+                emptyState.show(.needsAccess(folder: folder))
+            } else {
+                emptyState.show(model.isFiltered ? .noMatches : .noImages(folder: model.folder?.lastPathComponent ?? ""))
+            }
         } else {
             emptyState.isHidden = true
         }
         if mode == .browser { inspector.update(browser.selectedItems.first) }
         updateChrome()
+    }
+
+    /// Reads the open folder again if it was the one waiting for permission.
+    @objc private func folderAccessChanged() {
+        guard let folder = model.folder, model.media.isEmpty, model.folders.isEmpty, FolderAccess.canRead(folder) else { return }
+        Task { await model.load(folder) }
     }
 
     // MARK: - Mode switching

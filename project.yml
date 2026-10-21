@@ -3,6 +3,12 @@ options:
   deploymentTarget:
     macOS: "14.0"
   developmentLanguage: en
+# AppStore is Release in the App Sandbox, for the Mac App Store. Release (Developer ID, GitHub)
+# stays outside the sandbox so it can open any folder without asking.
+configs:
+  Debug: debug
+  Release: release
+  AppStore: release
 settings:
   base:
     MARKETING_VERSION: "0.1.0"
@@ -25,6 +31,9 @@ targets:
         # Hardened runtime would refuse to load the ad-hoc signed test bundle into the app.
         Debug:
           ENABLE_HARDENED_RUNTIME: NO
+        AppStore:
+          ENABLE_APP_SANDBOX: YES
+          CODE_SIGN_ENTITLEMENTS: Glimt/Glimt-AppStore.entitlements
       base:
         # Forks: change to your own reverse-DNS ID (the app reads it from here) and Team.
         PRODUCT_BUNDLE_IDENTIFIER: com.feiyangtang.Glimt

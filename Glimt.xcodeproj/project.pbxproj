@@ -10,6 +10,7 @@
 		0B68EE870762D99F1D71E7B4 /* Benchmark.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CB177D2624AD097703A5A87 /* Benchmark.swift */; };
 		0B8C4A3C7ED0F6E5BB9BDA20 /* BrowserController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06D950FB82171E3728BD6F3B /* BrowserController.swift */; };
 		1AA1635E69F2CCF223A9D358 /* ThumbnailStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8281C9B31E8BC7A7A8109356 /* ThumbnailStore.swift */; };
+		1B67DD2A3F2216359D37CCEA /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 28B4771A050A457686A05694 /* PrivacyInfo.xcprivacy */; };
 		1C55EFCB335BDEB8B17B4CEF /* Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F14B5608DDBF26A407B2874 /* Settings.swift */; };
 		1DDA739A7FA3FFE8BDD199E5 /* ViewerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D78FF84B8FDD42BF209E51D /* ViewerController.swift */; };
 		23B918A6395CBF23F38A342A /* Inspector.swift in Sources */ = {isa = PBXBuildFile; fileRef = C41C54D9B5B77628A55DA3FC /* Inspector.swift */; };
@@ -26,6 +27,7 @@
 		5F579E1F626A79B8D81E55AF /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9912898E147389D05B43483A /* AppDelegate.swift */; };
 		616C58C8D22007A7353336EB /* ThumbnailCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = F594AE760C1A21DC75D2F6E8 /* ThumbnailCell.swift */; };
 		66324B44D3F4555DEA219BFD /* GridLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02628CC158DA99F49199B5B4 /* GridLayout.swift */; };
+		665D7A775687123A6A8A024B /* FolderAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B2FF416CA95213849CD523C /* FolderAccess.swift */; };
 		6CE5DB15D864F77F04F89A28 /* ViewerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9C6747BA5BE3854C5B477F4 /* ViewerView.swift */; };
 		6EC3A21FFDB9A9530C8F14C6 /* SelfTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8547150399C04EEEDDE65C2 /* SelfTest.swift */; };
 		7B37AEACFF7BBF548E63469C /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FDF1BA8D150F1D5AC0AA370 /* RootView.swift */; };
@@ -70,6 +72,7 @@
 		24663C8CE821A111CB9F23DB /* Shortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shortcuts.swift; sourceTree = "<group>"; };
 		25740A45404DAAE655CEE6C7 /* ImageDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageDecoder.swift; sourceTree = "<group>"; };
 		25E8D8FE2E51AB5E7E7A2B9F /* FolderBrowser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderBrowser.swift; sourceTree = "<group>"; };
+		28B4771A050A457686A05694 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		2F14B5608DDBF26A407B2874 /* Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings.swift; sourceTree = "<group>"; };
 		3368FA203BA298E5C1C8497C /* MainMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainMenu.swift; sourceTree = "<group>"; };
 		37DD9E72675102E631C31E7B /* ImageDecoderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageDecoderTests.swift; sourceTree = "<group>"; };
@@ -89,6 +92,7 @@
 		9140ED6C60DBFAF6C502F68A /* MainWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindowController.swift; sourceTree = "<group>"; };
 		94AC9D86E62D75F636F80F15 /* AppInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppInfo.swift; sourceTree = "<group>"; };
 		9912898E147389D05B43483A /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		9B2FF416CA95213849CD523C /* FolderAccess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderAccess.swift; sourceTree = "<group>"; };
 		9CB177D2624AD097703A5A87 /* Benchmark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Benchmark.swift; sourceTree = "<group>"; };
 		9FDF1BA8D150F1D5AC0AA370 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		A3757FAB1489DC8F5C30692A /* FolderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderTests.swift; sourceTree = "<group>"; };
@@ -101,6 +105,7 @@
 		D0D056C4492842871A5A9874 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		E9F025A1F34AB531BCF72599 /* Diagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Diagnostics.swift; sourceTree = "<group>"; };
 		F594AE760C1A21DC75D2F6E8 /* ThumbnailCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailCell.swift; sourceTree = "<group>"; };
+		F91BA90461DCDC1F340F9BDC /* Glimt-AppStore.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Glimt-AppStore.entitlements"; sourceTree = "<group>"; };
 		F9A138A95629C21F921D5B04 /* DecodePipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DecodePipeline.swift; sourceTree = "<group>"; };
 		F9C6747BA5BE3854C5B477F4 /* ViewerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewerView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -122,6 +127,7 @@
 			isa = PBXGroup;
 			children = (
 				0CB2B7550816F8EAE2145DE3 /* FileOperations.swift */,
+				9B2FF416CA95213849CD523C /* FolderAccess.swift */,
 				B2EAFC4D3DC52829A197FF35 /* FolderModel.swift */,
 				5BF5DB6F2B478488BC1740CA /* FolderScanner.swift */,
 				497962156AC26FEF1C65A232 /* Item.swift */,
@@ -222,8 +228,10 @@
 			isa = PBXGroup;
 			children = (
 				073038F241A81A80A6E70B2E /* Assets.xcassets */,
+				F91BA90461DCDC1F340F9BDC /* Glimt-AppStore.entitlements */,
 				CFD4E168FA890B6FF0A3955A /* Info.plist */,
 				D0D056C4492842871A5A9874 /* Localizable.xcstrings */,
+				28B4771A050A457686A05694 /* PrivacyInfo.xcprivacy */,
 				89721B947D3B7FD7CE337AB4 /* App */,
 				A1B9AFA1E63914D586DFEC74 /* Browser */,
 				246D847D6C70CFB646D99EF4 /* Library */,
@@ -317,6 +325,7 @@
 			files = (
 				F883B18CDEEAD85A6BF6BFC7 /* Assets.xcassets in Resources */,
 				50455850AF31F318846F5A78 /* Localizable.xcstrings in Resources */,
+				1B67DD2A3F2216359D37CCEA /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -334,6 +343,7 @@
 				2F0F57C1F39719229FDFD10C /* DecodePipeline.swift in Sources */,
 				BC1CFC73AC786BF5918A3801 /* Diagnostics.swift in Sources */,
 				35608B4C426243F90710C48F /* FileOperations.swift in Sources */,
+				665D7A775687123A6A8A024B /* FolderAccess.swift in Sources */,
 				85BF76171048515CBFB36F37 /* FolderBrowser.swift in Sources */,
 				905BB9227905A6605FDF3240 /* FolderModel.swift in Sources */,
 				F5F777C772DD1A7CC3C3D1C9 /* FolderScanner.swift in Sources */,
@@ -386,6 +396,23 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		2EF9D23A609F546490AE0F67 /* AppStore */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.feiyangtang.GlimtTests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Glimt.app/Contents/MacOS/Glimt";
+			};
+			name = AppStore;
+		};
 		363E132DB4A3AC96E4BE8C79 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -584,6 +611,94 @@
 			};
 			name = Release;
 		};
+		D0FF947C7836848AF5D623F8 /* AppStore */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "Glimt/Glimt-AppStore.entitlements";
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Glimt/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Glimt;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 TangSpark. Apache License 2.0.";
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.feiyangtang.Glimt;
+				SDKROOT = macosx;
+			};
+			name = AppStore;
+		};
+		D2EF36E1A99A069D8B7BE73A /* AppStore */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+			};
+			name = AppStore;
+		};
 		ED471B8E613B51BB56AB2FEE /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -607,29 +722,32 @@
 		123E1B019E591B897C50D2DA /* Build configuration list for PBXNativeTarget "Glimt" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
+				D0FF947C7836848AF5D623F8 /* AppStore */,
 				363E132DB4A3AC96E4BE8C79 /* Debug */,
 				38296A5034EEDF76CB9A12D4 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Debug;
+			defaultConfigurationName = AppStore;
 		};
 		60A1051E53834D100D1697E2 /* Build configuration list for PBXNativeTarget "GlimtTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
+				2EF9D23A609F546490AE0F67 /* AppStore */,
 				37C93373CC164AE89613588B /* Debug */,
 				ED471B8E613B51BB56AB2FEE /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Debug;
+			defaultConfigurationName = AppStore;
 		};
 		C7C010D4AD66EC054A77A126 /* Build configuration list for PBXProject "Glimt" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
+				D2EF36E1A99A069D8B7BE73A /* AppStore */,
 				780B06703104DB7D42ABE32D /* Debug */,
 				9C5A94DF02362EED715E1D11 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Debug;
+			defaultConfigurationName = AppStore;
 		};
 /* End XCConfigurationList section */
 	};

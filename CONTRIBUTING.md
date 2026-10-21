@@ -36,6 +36,12 @@ Run the self-test, which drives a real window against real files (move, copy, tr
 scripts/selftest.sh
 ```
 
+If your change touches files or folders, run it inside the App Sandbox too, as the App Store version runs:
+
+```bash
+scripts/selftest.sh AppStore
+```
+
 If your change touches loading, decoding, the grid or the viewer, run the benchmark before and after and include both results in the pull request ([docs/PERFORMANCE.md](docs/PERFORMANCE.md)):
 
 ```bash
@@ -77,4 +83,4 @@ When you add or change interface text in code, run `scripts/localize.sh` and add
 
 ## Releases
 
-Maintainers build signed, notarized releases with `scripts/release.sh`; see the comments at the top of the script.
+Maintainers build signed, notarized releases with `scripts/release.sh`, and the Mac App Store version with `scripts/appstore.sh` ([docs/APP_STORE.md](docs/APP_STORE.md)); see the comments at the top of each script.

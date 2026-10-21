@@ -12,6 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         Preferences.register()
+        FolderAccess.restore()
         Preferences.applyAppearance()
         NSApp.mainMenu = MainMenu.make()
     }

@@ -210,7 +210,7 @@ enum MainMenu {
         menu.addItem(item(String(localized: "Enclosing Folder"), #selector(Main.openEnclosingFolder(_:)), key(NSUpArrowFunctionKey), [.command]))
         menu.addItem(item(String(localized: "Go to Folder…"), #selector(Main.goToFolder(_:)), "g", [.command, .shift]))
         menu.addItem(.separator())
-        let home = FileManager.default.homeDirectoryForCurrentUser
+        let home = FolderAccess.home
         let places: [(String, URL, String, NSEvent.ModifierFlags)] = [
             (String(localized: "Home"), home, "h", [.command, .shift]),
             (String(localized: "Desktop"), home.appendingPathComponent("Desktop"), "d", [.command, .shift]),
@@ -286,7 +286,7 @@ final class DynamicMenus: NSObject, NSMenuDelegate {
             for url in Preferences.recentURLs {
                 let item = menu.addItem(withTitle: FileManager.default.displayName(atPath: url.path), action: #selector(AppDelegate.openRecent(_:)), keyEquivalent: "")
                 item.representedObject = url
-                item.toolTip = (url.path as NSString).abbreviatingWithTildeInPath
+                item.toolTip = FolderAccess.abbreviated(url.path)
                 item.image = NSWorkspace.shared.icon(forFile: url.path)
                 item.image?.size = NSSize(width: 16, height: 16)
             }

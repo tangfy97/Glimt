@@ -169,7 +169,7 @@ enum MetadataReader {
         if !item.tags.isEmpty {
             rows.append(Row(label: String(localized: "Tags"), value: item.tags.joined(separator: ", ")))
         }
-        rows.append(Row(label: String(localized: "Where"), value: (item.url.deletingLastPathComponent().path as NSString).abbreviatingWithTildeInPath))
+        rows.append(Row(label: String(localized: "Where"), value: FolderAccess.abbreviated(item.url.deletingLastPathComponent().path)))
         return InspectorSection(title: String(localized: "File"), rows: rows)
     }
 

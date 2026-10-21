@@ -161,7 +161,8 @@ final class ShortcutSheetView: NSVisualEffectView {
 }
 
 /// What the window shows when there is nothing to show: welcome with recent folders, reading,
-/// empty folder, no matches, unreadable file. Left-aligned text, no stock illustrations.
+/// empty folder, no matches, unreadable file, a folder the sandbox keeps out. Left-aligned text,
+/// no stock illustrations.
 final class PlaceholderView: NSView {
     enum Content {
         case welcome
@@ -169,17 +170,22 @@ final class PlaceholderView: NSView {
         case noImages(folder: String)
         case noMatches
         case unreadable(file: String)
+        case needsAccess(folder: URL)
     }
 
     /// Clicking a recent folder.
     var onOpen: ((URL) -> Void)?
+    /// Clicking Allow Access, with the folder to allow.
+    var onAllowAccess: ((URL) -> Void)?
 
     private let stack = NSStackView()
     private let title = NSTextField(labelWithString: "")
     private let detail = NSTextField(wrappingLabelWithString: "")
     private let recents = NSStackView()
     private let spinner = NSProgressIndicator()
+    private let allowButton = NSButton(title: String(localized: "Allow Access…"), target: nil, action: nil)
     private var recentURLs: [URL] = []
+    private var accessFolder: URL?
     private var isWelcome = false
 
     override init(frame frameRect: NSRect) {
@@ -204,8 +210,14 @@ final class PlaceholderView: NSView {
         stack.spacing = 8
         stack.addArrangedSubview(heading)
         stack.addArrangedSubview(detail)
+        stack.addArrangedSubview(allowButton)
         stack.addArrangedSubview(recents)
         stack.setCustomSpacing(22, after: detail)
+        stack.setCustomSpacing(22, after: allowButton)
+        allowButton.bezelStyle = .push
+        allowButton.target = self
+        allowButton.action = #selector(allowAccess)
+        allowButton.isHidden = true
         stack.translatesAutoresizingMaskIntoConstraints = false
         addSubview(stack)
         // Set off-centre, towards the upper left, like a page rather than a dialog.
@@ -220,10 +232,12 @@ final class PlaceholderView: NSView {
 
     override var isFlipped: Bool { true }
 
-    /// Passes clicks through except on the recent-folder links.
+    /// Passes clicks through except on the recent-folder links and Allow Access.
     override func hitTest(_ point: NSPoint) -> NSView? {
-        guard isWelcome, let hit = super.hitTest(point), hit.isDescendant(of: recents) else { return nil }
-        return hit
+        guard let hit = super.hitTest(point) else { return nil }
+        if isWelcome, hit.isDescendant(of: recents) { return hit }
+        if !allowButton.isHidden, hit.isDescendant(of: allowButton) { return hit }
+        return nil
     }
 
     private static func serif(size: CGFloat) -> NSFont {
@@ -237,11 +251,16 @@ final class PlaceholderView: NSView {
         isWelcome = false
         spinner.stopAnimation(nil)
         for view in recents.arrangedSubviews { view.removeFromSuperview() }
+        allowButton.isHidden = true
         switch content {
         case .welcome:
             isWelcome = true
             title.stringValue = "Glimt"
             detail.stringValue = String(localized: "Open a folder with ⌘O, or drop one here. Number keys then sort what you see into folders.")
+            // In the sandbox, offer the one permission that makes the folder columns work.
+            if FolderAccess.isSandboxed, !FolderAccess.canRead(FolderAccess.home) {
+                showAllow(FolderAccess.home, title: String(localized: "Allow Access to Home Folder…"))
+            }
             showRecents()
         case .loading(let folder):
             title.stringValue = folder
@@ -256,7 +275,21 @@ final class PlaceholderView: NSView {
         case .unreadable(let file):
             title.stringValue = file
             detail.stringValue = String(localized: "This file can’t be opened. It may be damaged, or in a format macOS can’t read.")
+        case .needsAccess(let folder):
+            title.stringValue = folder.lastPathComponent
+            detail.stringValue = String(localized: "Glimt needs your permission to open this folder. You only need to allow it once.")
+            showAllow(folder, title: String(localized: "Allow Access…"))
         }
+    }
+
+    private func showAllow(_ folder: URL, title: String) {
+        accessFolder = folder
+        allowButton.title = title
+        allowButton.isHidden = false
+    }
+
+    @objc private func allowAccess() {
+        accessFolder.map { onAllowAccess?($0) }
     }
 
     private func showRecents() {
@@ -277,7 +310,7 @@ final class PlaceholderView: NSView {
             let button = NSButton(title: "", target: self, action: #selector(openRecent(_:)))
             button.isBordered = false
             button.tag = index
-            let parent = (url.deletingLastPathComponent().path as NSString).abbreviatingWithTildeInPath
+            let parent = FolderAccess.abbreviated(url.deletingLastPathComponent().path)
             let text = NSMutableAttributedString(string: url.lastPathComponent, attributes: [
                 .font: NSFont.systemFont(ofSize: 13, weight: .medium), .foregroundColor: NSColor.controlAccentColor,
             ])
@@ -285,6 +318,10 @@ final class PlaceholderView: NSView {
                 .font: NSFont.systemFont(ofSize: 12), .foregroundColor: NSColor.tertiaryLabelColor,
             ]))
             button.attributedTitle = text
+            // A truncating cell's intrinsic width is just its ellipsis; ask for the full title.
+            let width = button.widthAnchor.constraint(equalToConstant: ceil(button.cell?.cellSize.width ?? 0))
+            width.priority = .defaultHigh
+            width.isActive = true
             button.toolTip = url.path
             recents.addArrangedSubview(button)
         }

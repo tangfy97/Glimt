@@ -197,7 +197,7 @@ private struct FolderList: View {
                         .frame(width: 12, alignment: .trailing)
                     VStack(alignment: .leading, spacing: 1) {
                         Text(entry.folder.lastPathComponent)
-                        Text((entry.folder.path as NSString).abbreviatingWithTildeInPath)
+                        Text(FolderAccess.abbreviated(entry.folder.path))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)

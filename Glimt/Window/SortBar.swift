@@ -143,7 +143,7 @@ final class SortSlotView: NSView {
         ])
         underline.actions = ["frame": NSNull(), "backgroundColor": NSNull()]
         layer?.addSublayer(underline)
-        toolTip = String(localized: "Key \(slot + 1) moves files to \((folder.path as NSString).abbreviatingWithTildeInPath). Hold ⇧ to copy.")
+        toolTip = String(localized: "Key \(slot + 1) moves files to \(FolderAccess.abbreviated(folder.path)). Hold ⇧ to copy.")
         registerForDraggedTypes([.fileURL])
         addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeInActiveApp, .inVisibleRect], owner: self))
     }

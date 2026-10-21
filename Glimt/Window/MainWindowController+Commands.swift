@@ -230,7 +230,7 @@ extension MainWindowController {
         alert.messageText = String(localized: "Go to the folder")
         alert.addButton(withTitle: String(localized: "Go"))
         alert.addButton(withTitle: String(localized: "Cancel"))
-        let field = NSTextField(string: (model.folder?.path as NSString?)?.abbreviatingWithTildeInPath ?? "~/")
+        let field = NSTextField(string: model.folder.map { FolderAccess.abbreviated($0.path) } ?? "~/")
         field.frame = NSRect(x: 0, y: 0, width: 360, height: 24)
         field.placeholderString = "~/Pictures"
         alert.accessoryView = field
@@ -238,7 +238,7 @@ extension MainWindowController {
         alert.beginSheetModal(for: window) { [weak self] response in
             MainActor.assumeIsolated {
                 guard response == .alertFirstButtonReturn else { return }
-                let path = (field.stringValue.trimmingCharacters(in: .whitespaces) as NSString).expandingTildeInPath
+                let path = FolderAccess.expanded(field.stringValue.trimmingCharacters(in: .whitespaces))
                 var isDirectory: ObjCBool = false
                 guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory) else {
                     self?.showAlert(String(localized: "There is no folder at “\(path)”."))
