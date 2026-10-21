@@ -15,6 +15,10 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue" alt="Apache License 2.0"></a>
 </p>
 
+<p align="center">
+  <img src="docs/images/screenshot-grid.jpg" alt="Glimt showing a folder of landscape photos in a thumbnail grid, with folder columns above and the sort bar below">
+</p>
+
 *Glimt* (Norwegian and Danish for "a glimpse, a flash of light") is pronounced like *glimpt* without the p.
 
 Glimt is for going through a lot of pictures quickly: the hundreds from a trip, a shoot, a phone backup, a scanned archive. It opens any folder instantly, pages through full-resolution photos without waiting, and sorts them into folders with the number keys. No import, no library, no catalog: your files stay exactly where they are.
@@ -53,9 +57,14 @@ Glimt is for going through a lot of pictures quickly: the hundreds from a trip, 
 - English and Simplified Chinese, following the system language
 - Respects Reduce Motion
 
+<p align="center">
+  <img src="docs/images/screenshot-info.jpg" width="49%" alt="A RAW photo of a beach in the viewer, with the Info panel showing camera, exposure and location">
+  <img src="docs/images/screenshot-dark.jpg" width="49%" alt="Poppies in the viewer in dark mode">
+</p>
+
 ## Install
 
-**Download:** get the latest `.dmg` from [Releases](https://github.com/tangfy97/Glimt/releases), open it, and drag Glimt to Applications. It is signed and notarized by Apple. Glimt needs macOS 14 Sonoma or later.
+**Download:** get the latest version from [Releases](https://github.com/tangfy97/Glimt/releases), open it, and drag Glimt to Applications. It is signed and notarized by Apple. Glimt needs macOS 14 Sonoma or later.
 
 **Build from source:** you need Xcode 16 or later and [XcodeGen](https://github.com/yonaskolb/XcodeGen).
 
@@ -111,6 +120,8 @@ Bug reports, ideas and pull requests are welcome; please read [CONTRIBUTING.md](
 ## Acknowledgements
 
 Glimt is inspired by [Phoenix Slides](https://github.com/gobbledegook/creevey) by Dominic Yu, a much-loved Mac slideshow and sorting tool since 2005. Glimt is an independent reimplementation and shares no code with it.
+
+The photos in the screenshots are public-domain (CC0) RAW samples from [RAW.pixls.us](https://raw.pixls.us).
 
 ## License
 
