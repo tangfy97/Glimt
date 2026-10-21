@@ -6,10 +6,14 @@ All notable changes to Glimt are listed here. The format follows [Keep a Changel
 
 ### Added
 - A Mac App Store version that runs in the App Sandbox. Glimt asks once for each folder outside Pictures, Movies and Downloads, or once for the whole home folder, and remembers the answer.
-- A privacy policy ([PRIVACY.md](PRIVACY.md)) and a privacy manifest.
+
+## [0.1.1] - 2026-10-21
 
 ### Fixed
 - Recent folders on the welcome screen showed only "…".
+
+### Added
+- A privacy policy ([PRIVACY.md](PRIVACY.md)) and a privacy manifest. Glimt still collects nothing.
 
 ## [0.1.0] - 2026-10-21
 
@@ -34,5 +38,6 @@ The first public version.
 ### Fit in
 - English and Simplified Chinese; light and dark appearance; Reduce Motion support.
 
-[Unreleased]: https://github.com/tangfy97/Glimt/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/tangfy97/Glimt/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/tangfy97/Glimt/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/tangfy97/Glimt/releases/tag/v0.1.0
