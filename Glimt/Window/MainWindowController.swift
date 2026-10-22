@@ -27,9 +27,9 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
     var searchItem: NSSearchToolbarItem?
     var sizeSlider: NSSlider?
     private var preferencesObserver: NSObjectProtocol?
-    /// Folders still loading, and whether the keyboard should go to the pictures once they have.
+    /// Folders still loading, and where Return or Tab in the columns asked to go once they have.
     private var openingCount = 0
-    private var entersGridWhenOpened = false
+    private var pendingEntry: FolderBrowserController.Entry?
 
     var onOpenedURL: ((URL) -> Void)?
     var onClose: ((MainWindowController) -> Void)?
@@ -85,7 +85,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
             // The keyboard stays in the columns, so ↑ and ↓ go on to the next folder.
             self.open(url, focus: .unchanged)
         }
-        folderColumns.onEnterGrid = { [weak self] in self?.enterGrid() }
+        folderColumns.onEnter = { [weak self] entry in self?.enter(entry) }
         viewer.view.isHidden = true
         emptyState.show(.welcome)
         emptyState.onOpen = { [weak self] url in self?.open(url) }
@@ -158,9 +158,9 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
                 openViewer(at: index, animated: false)
             } else {
                 browser.collectionView.scroll(.zero)
-                if entersGridWhenOpened && openingCount == 0 {
-                    entersGridWhenOpened = false
-                    browser.enter()
+                if let entry = pendingEntry, openingCount == 0 {
+                    pendingEntry = nil
+                    perform(entry)
                 } else if focus == .grid {
                     browser.focus()
                 }
@@ -169,14 +169,21 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         }
     }
 
-    /// Return or Tab in the folder columns: the keyboard moves to the pictures, once the folder
-    /// the columns show has loaded.
-    func enterGrid() {
+    /// Return or Tab in the folder columns, carried out once the folder the columns show has loaded.
+    func enter(_ entry: FolderBrowserController.Entry) {
         guard mode == .browser else { return }
         if openingCount > 0 {
-            entersGridWhenOpened = true
+            pendingEntry = entry
         } else {
-            browser.enter()
+            perform(entry)
+        }
+    }
+
+    private func perform(_ entry: FolderBrowserController.Entry) {
+        switch entry {
+        // The picture last viewed here if it is still selected, else the first.
+        case .viewer: browser.openSelection()
+        case .grid: browser.enter()
         }
     }
 
@@ -240,7 +247,9 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         rootView.layoutSubtreeIfNeeded()
         browser.scrollView.isHidden = false
         browser.selectMedia(at: index, scroll: true)
-        browser.focus()
+        // Back to the folder columns when they show, so ↓ moves on to the next folder; the grid
+        // keeps the picture just viewed selected.
+        if rootView.showsFolderColumns { folderColumns.focus() } else { browser.focus() }
         let end = animated ? browser.imageFrame(forMedia: index, in: rootView) : nil
         viewer.deactivate()
         updateChrome()

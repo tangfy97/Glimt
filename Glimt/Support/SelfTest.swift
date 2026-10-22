@@ -176,8 +176,21 @@ final class SelfTest {
         check("…and the keyboard is still in the columns", window.folderColumns.hasFocus)
         window.folderColumns.currentTable?.keyDown(with: key(NSDownArrowFunctionKey))
         await until("↓ opens the folder below") { self.samePath(self.window.model.folder, self.photos) }
+        // The culling loop: Return views the folder, Esc comes back to the columns, ↑ moves on.
         window.folderColumns.currentTable?.keyDown(with: key(0x0D))
-        await until("Return moves the keyboard to the pictures") {
+        await until("Return in the columns views the first picture") {
+            self.window.mode == .viewer && !self.window.isTransitioning && self.window.viewer.index == 0
+        }
+        window.viewer.view.keyDown(with: key(0x1B))
+        await until("Esc gives the keyboard back to the columns") {
+            self.window.mode == .browser && !self.window.isTransitioning && self.window.folderColumns.hasFocus
+        }
+        window.folderColumns.currentTable?.keyDown(with: key(NSUpArrowFunctionKey))
+        await until("…so ↑ goes straight on to the next folder") { self.samePath(self.window.model.folder, self.keep) }
+        window.folderColumns.currentTable?.keyDown(with: key(NSDownArrowFunctionKey))
+        await until("and ↓ back") { self.samePath(self.window.model.folder, self.photos) }
+        window.folderColumns.currentTable?.keyDown(with: key(0x09))
+        await until("Tab moves the keyboard into the grid") {
             self.window.window?.firstResponder === self.window.browser.collectionView && !self.window.browser.collectionView.selectionIndexPaths.isEmpty
         }
         window.browser.collectionView.keyDown(with: key(0x09))

@@ -1151,6 +1151,16 @@
         }
       }
     },
+    "In folder columns: next folder, view it": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在文件夹分栏中：换文件夹、查看图片"
+          }
+        }
+      }
+    },
     "Include Subfolders": {
       "localizations": {
         "zh-Hans": {

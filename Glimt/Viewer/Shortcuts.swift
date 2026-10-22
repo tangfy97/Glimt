@@ -20,6 +20,7 @@ enum Shortcuts {
                 ("⌘↑", String(localized: "Enclosing folder")),
                 ("⌥⌘S", String(localized: "Show or hide folder columns")),
                 ("Tab", String(localized: "Between folder columns and pictures")),
+                ("↑ ↓  Return", String(localized: "In folder columns: next folder, view it")),
                 ("⌘F", String(localized: "Search names")),
             ]),
             Group(title: String(localized: "Sort into folders"), entries: [

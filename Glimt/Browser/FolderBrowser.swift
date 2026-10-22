@@ -73,14 +73,16 @@ private enum ColumnMetrics {
 /// holds the usual places and then every mounted volume; clicking a folder shows it in the grid,
 /// and opening a folder any other way moves the columns to match. Arrow keys walk the tree
 /// (← → between columns) and typing a name jumps to it. The keyboard stays in the columns while
-/// the grid follows; Return or Tab moves it into the pictures.
+/// the grid follows, and comes back to them when the viewer closes, so culling a tree of folders
+/// is ↓, Return, ← →, Esc, ↓. Tab moves the keyboard into the grid and back.
 @MainActor
 final class FolderBrowserController: NSObject {
     let view = FolderColumnsView()
     /// The user picked a folder in the columns.
     var onOpen: ((URL) -> Void)?
-    /// Return or Tab: the user wants the keyboard in the pictures of the open folder.
-    var onEnterGrid: (() -> Void)?
+    /// Return views the open folder's pictures; Tab moves the keyboard into the grid.
+    enum Entry { case viewer, grid }
+    var onEnter: ((Entry) -> Void)?
 
     private let root = FolderNode(url: URL(fileURLWithPath: "/"), title: "")
     fileprivate private(set) var placeCount = 0
@@ -125,14 +127,14 @@ final class FolderBrowserController: NSObject {
         }
     }
 
-    fileprivate func enterGrid() {
+    fileprivate func enter(_ entry: Entry) {
         // Open the folder now rather than after the arrow-key pause, so the grid shows it.
         if let pendingOpen, let url = selectedURL {
             pendingOpen.cancel()
             self.pendingOpen = nil
             onOpen?(url)
         }
-        onEnterGrid?()
+        onEnter?(entry)
     }
 
     override init() {
@@ -413,11 +415,11 @@ final class FolderColumn: NSObject, NSTableViewDataSource, NSTableViewDelegate {
 
     fileprivate func moveLeft() { owner?.moveLeft(from: self) }
     fileprivate func moveRight() { owner?.moveRight(from: self) }
-    fileprivate func enterGrid() { owner?.enterGrid() }
+    fileprivate func enter(_ entry: FolderBrowserController.Entry) { owner?.enter(entry) }
     fileprivate func focusChanged() { owner?.focusChanged() }
 }
 
-/// ← and → move between columns, as in Finder; Return and Tab go to the pictures.
+/// ← and → move between columns, as in Finder; Return views the pictures, Tab goes to the grid.
 final class FolderColumnTable: NSTableView {
     fileprivate weak var column: FolderColumn?
 
@@ -425,7 +427,8 @@ final class FolderColumnTable: NSTableView {
         switch event.charactersIgnoringModifiers?.unicodeScalars.first.map({ Int($0.value) }) {
         case NSLeftArrowFunctionKey: column?.moveLeft()
         case NSRightArrowFunctionKey: column?.moveRight()
-        case 0x0D, 0x03, 0x09, 0x19: column?.enterGrid() // return, enter, tab, shift-tab
+        case 0x0D, 0x03: column?.enter(.viewer) // return, enter
+        case 0x09, 0x19: column?.enter(.grid) // tab, shift-tab
         default: super.keyDown(with: event)
         }
     }

@@ -4,6 +4,9 @@ All notable changes to Glimt are listed here. The format follows [Keep a Changel
 
 ## [Unreleased]
 
+### Changed
+- Closing the viewer puts the keyboard back in the folder columns, so ↓ goes on to the next folder. Return in the columns views the folder's pictures; Tab still moves into the grid.
+
 ### Added
 - A Mac App Store version that runs in the App Sandbox. Glimt asks once for each folder outside Pictures, Movies and Downloads, or once for the whole home folder, and remembers the answer.
 
