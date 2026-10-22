@@ -4,11 +4,13 @@ All notable changes to Glimt are listed here. The format follows [Keep a Changel
 
 ## [Unreleased]
 
-### Changed
-- The keyboard stays in the folder columns after you pick a folder there, so ↑ and ↓ go on to the next folder while the grid follows. Return or Tab moves into the pictures; Tab moves back. Whichever has the keyboard shows the accent colour, the other turns grey.
-
 ### Added
 - A Mac App Store version that runs in the App Sandbox. Glimt asks once for each folder outside Pictures, Movies and Downloads, or once for the whole home folder, and remembers the answer.
+
+## [0.1.3] - 2026-10-22
+
+### Changed
+- The keyboard stays in the folder columns after you pick a folder there, so ↑ and ↓ go on to the next folder while the grid follows. Return or Tab moves into the pictures; Tab moves back. Whichever has the keyboard shows the accent colour, the other turns grey.
 
 ## [0.1.2] - 2026-10-21
 
@@ -46,7 +48,8 @@ The first public version.
 ### Fit in
 - English and Simplified Chinese; light and dark appearance; Reduce Motion support.
 
-[Unreleased]: https://github.com/tangfy97/Glimt/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/tangfy97/Glimt/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/tangfy97/Glimt/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/tangfy97/Glimt/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/tangfy97/Glimt/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/tangfy97/Glimt/releases/tag/v0.1.0
