@@ -27,6 +27,9 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
     var searchItem: NSSearchToolbarItem?
     var sizeSlider: NSSlider?
     private var preferencesObserver: NSObjectProtocol?
+    /// Folders still loading, and whether the keyboard should go to the pictures once they have.
+    private var openingCount = 0
+    private var entersGridWhenOpened = false
 
     var onOpenedURL: ((URL) -> Void)?
     var onClose: ((MainWindowController) -> Void)?
@@ -79,8 +82,10 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         browser.showsFolderTiles = !Preferences.showsFolderColumns
         folderColumns.onOpen = { [weak self] url in
             guard let self, url.standardizedFileURL.path != self.model.folder?.standardizedFileURL.path else { return }
-            self.open(url)
+            // The keyboard stays in the columns, so ↑ and ↓ go on to the next folder.
+            self.open(url, focus: .unchanged)
         }
+        folderColumns.onEnterGrid = { [weak self] in self?.enterGrid() }
         viewer.view.isHidden = true
         emptyState.show(.welcome)
         emptyState.onOpen = { [weak self] url in self?.open(url) }
@@ -123,8 +128,15 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
 
     // MARK: - Opening
 
+    /// Where the keyboard goes once a folder has opened.
+    enum Focus {
+        case grid
+        /// Leave it where it is: in the folder columns, when the user picked the folder there.
+        case unchanged
+    }
+
     /// Opens a folder in the grid, or an image straight in the viewer with its folder behind it.
-    func open(_ url: URL) {
+    func open(_ url: URL, focus: Focus = .grid) {
         let isDirectory = (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
         let folder = isDirectory ? url : url.deletingLastPathComponent()
         FolderAccess.remember(folder)
@@ -138,15 +150,33 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         searchItem?.searchField.stringValue = ""
         model.searchText = ""
         window?.representedURL = folder
+        openingCount += 1
         Task {
             await model.load(folder)
+            openingCount -= 1
             if !isDirectory, let index = model.media.firstIndex(where: { $0.url.lastPathComponent == url.lastPathComponent }) {
                 openViewer(at: index, animated: false)
             } else {
                 browser.collectionView.scroll(.zero)
-                browser.focus()
+                if entersGridWhenOpened && openingCount == 0 {
+                    entersGridWhenOpened = false
+                    browser.enter()
+                } else if focus == .grid {
+                    browser.focus()
+                }
             }
             onFolderLoaded?()
+        }
+    }
+
+    /// Return or Tab in the folder columns: the keyboard moves to the pictures, once the folder
+    /// the columns show has loaded.
+    func enterGrid() {
+        guard mode == .browser else { return }
+        if openingCount > 0 {
+            entersGridWhenOpened = true
+        } else {
+            browser.enter()
         }
     }
 

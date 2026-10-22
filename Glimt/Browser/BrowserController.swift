@@ -6,6 +6,8 @@ protocol BrowserControllerDelegate: AnyObject {
     func browser(_ browser: BrowserController, openFolder url: URL)
     func browserSelectionDidChange(_ browser: BrowserController)
     func browserContextMenu(_ browser: BrowserController) -> NSMenu?
+    /// Tab or Shift-Tab: move the keyboard out of the grid. Returns false to let it go its usual way.
+    func browserWantsToLeave(_ browser: BrowserController) -> Bool
 }
 
 /// The thumbnail grid: subfolders first, then the folder's images and videos.
@@ -101,6 +103,32 @@ final class BrowserController: NSObject, NSCollectionViewDataSource, NSCollectio
 
     func focus() {
         collectionView.window?.makeFirstResponder(collectionView)
+    }
+
+    /// Puts the keyboard in the grid and selects the first picture if nothing is selected.
+    /// Returns false, leaving the keyboard where it was, when there is nothing to select.
+    @discardableResult
+    func enter() -> Bool {
+        guard collectionView.numberOfItems(inSection: 0) > 0 else { return false }
+        focus()
+        if collectionView.selectionIndexPaths.isEmpty {
+            let first = IndexPath(item: model.media.isEmpty ? 0 : folderCount, section: 0)
+            collectionView.selectionIndexPaths = [first]
+            delegate?.browserSelectionDidChange(self)
+            scrollToVisible(first)
+        }
+        return true
+    }
+
+    /// Selection is drawn in the accent colour only while the keyboard is in the grid.
+    fileprivate func focusChanged() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            let emphasized = self.collectionView.window?.firstResponder === self.collectionView
+            for case let cell as ThumbnailCell in self.collectionView.visibleItems() {
+                cell.tile.isEmphasized = emphasized
+            }
+        }
     }
 
     // MARK: - Transition support
@@ -201,6 +229,7 @@ final class BrowserController: NSObject, NSCollectionViewDataSource, NSCollectio
         guard let item = item(at: indexPath.item) else { return cell }
         cell.representedURL = item.url
         cell.tile.showsName = layout.showsNames
+        cell.tile.isEmphasized = collectionView.window?.firstResponder === collectionView
         cell.tile.configure(name: item.name, tags: item.tags.compactMap(FinderTags.color(for:)), duration: nil)
         if item.kind == .folder {
             cell.tile.setImage(folderIcon, aspect: 1)
@@ -304,7 +333,23 @@ final class GridCollectionView: NSCollectionView {
         let key = event.charactersIgnoringModifiers?.unicodeScalars.first.map { Int($0.value) } ?? 0
         let opens = modifiers.isEmpty ? [0x0D, 0x03, 0x20].contains(key) // return, enter, space
             : modifiers == .command && key == NSDownArrowFunctionKey
-        if opens { browser?.openSelection() } else { super.keyDown(with: event) }
+        if opens {
+            browser?.openSelection()
+        } else if [0x09, 0x19].contains(key), let browser, browser.delegate?.browserWantsToLeave(browser) == true {
+            return // tab, shift-tab
+        } else {
+            super.keyDown(with: event)
+        }
+    }
+
+    override func becomeFirstResponder() -> Bool {
+        defer { browser?.focusChanged() }
+        return super.becomeFirstResponder()
+    }
+
+    override func resignFirstResponder() -> Bool {
+        defer { browser?.focusChanged() }
+        return super.resignFirstResponder()
     }
 
     override func mouseDown(with event: NSEvent) {

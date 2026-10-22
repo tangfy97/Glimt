@@ -93,6 +93,7 @@ Then press ⌘R. See [CONTRIBUTING.md](CONTRIBUTING.md) for tests and tools.
 | `I` | File info on the picture |
 | `⌥⌘P` | Slideshow |
 | `⌘[` `⌘]` `⌘↑` | Back, forward, enclosing folder |
+| `Tab` | Between the folder columns and the pictures (`Return` also goes from the columns to the pictures) |
 
 Press `?` in the viewer or ⌘/ anywhere for the full list.
 

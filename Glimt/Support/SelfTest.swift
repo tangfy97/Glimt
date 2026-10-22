@@ -164,6 +164,24 @@ final class SelfTest {
         await until("Back returns to the previous folder") { self.samePath(self.window.model.folder, self.photos) }
         window.goForward(nil)
         await until("Forward goes to the subfolder again") { self.samePath(self.window.model.folder, self.photos.appendingPathComponent("nested")) }
+
+        // The keyboard stays in the columns while the grid follows, so ↑ and ↓ reach the next folder.
+        await until("columns follow Forward") { self.samePath(self.window.folderColumns.selectedURL, self.photos.appendingPathComponent("nested")) }
+        window.folderColumns.focus()
+        window.folderColumns.currentTable?.keyDown(with: key(NSLeftArrowFunctionKey))
+        await until("← opens the parent folder") { self.samePath(self.window.model.folder, self.photos) }
+        check("the columns keep the keyboard once the folder opens", window.folderColumns.hasFocus)
+        window.folderColumns.currentTable?.keyDown(with: key(NSUpArrowFunctionKey))
+        await until("↑ opens the folder above") { self.samePath(self.window.model.folder, self.keep) }
+        check("…and the keyboard is still in the columns", window.folderColumns.hasFocus)
+        window.folderColumns.currentTable?.keyDown(with: key(NSDownArrowFunctionKey))
+        await until("↓ opens the folder below") { self.samePath(self.window.model.folder, self.photos) }
+        window.folderColumns.currentTable?.keyDown(with: key(0x0D))
+        await until("Return moves the keyboard to the pictures") {
+            self.window.window?.firstResponder === self.window.browser.collectionView && !self.window.browser.collectionView.selectionIndexPaths.isEmpty
+        }
+        window.browser.collectionView.keyDown(with: key(0x09))
+        await until("Tab moves it back to the columns") { self.window.folderColumns.hasFocus }
         window.open(photos)
         await until("back in photos") { self.samePath(self.window.model.folder, self.photos) && self.window.model.media.count >= 3 }
 

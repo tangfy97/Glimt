@@ -325,6 +325,16 @@
         }
       }
     },
+    "Between folder columns and pictures": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在文件夹分栏和图片之间切换"
+          }
+        }
+      }
+    },
     "Bit Depth": {
       "localizations": {
         "zh-Hans": {

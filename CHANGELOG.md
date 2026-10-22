@@ -4,6 +4,9 @@ All notable changes to Glimt are listed here. The format follows [Keep a Changel
 
 ## [Unreleased]
 
+### Changed
+- The keyboard stays in the folder columns after you pick a folder there, so ↑ and ↓ go on to the next folder while the grid follows. Return or Tab moves into the pictures; Tab moves back. Whichever has the keyboard shows the accent colour, the other turns grey.
+
 ### Added
 - A Mac App Store version that runs in the App Sandbox. Glimt asks once for each folder outside Pictures, Movies and Downloads, or once for the whole home folder, and remembers the answer.
 

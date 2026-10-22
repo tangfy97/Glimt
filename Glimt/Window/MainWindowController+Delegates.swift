@@ -16,6 +16,12 @@ extension MainWindowController: BrowserControllerDelegate {
         updateChrome()
     }
 
+    func browserWantsToLeave(_ browser: BrowserController) -> Bool {
+        guard rootView.showsFolderColumns else { return false }
+        folderColumns.focus()
+        return true
+    }
+
     func browserContextMenu(_ browser: BrowserController) -> NSMenu? {
         guard !browser.selectedItems.isEmpty else { return nil }
         let menu = NSMenu()

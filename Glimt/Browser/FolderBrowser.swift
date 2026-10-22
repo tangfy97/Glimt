@@ -72,12 +72,15 @@ private enum ColumnMetrics {
 /// Phoenix Slides' directory listing: columns of folders above the thumbnails. The first column
 /// holds the usual places and then every mounted volume; clicking a folder shows it in the grid,
 /// and opening a folder any other way moves the columns to match. Arrow keys walk the tree
-/// (← → between columns) and typing a name jumps to it.
+/// (← → between columns) and typing a name jumps to it. The keyboard stays in the columns while
+/// the grid follows; Return or Tab moves it into the pictures.
 @MainActor
 final class FolderBrowserController: NSObject {
     let view = FolderColumnsView()
     /// The user picked a folder in the columns.
     var onOpen: ((URL) -> Void)?
+    /// Return or Tab: the user wants the keyboard in the pictures of the open folder.
+    var onEnterGrid: (() -> Void)?
 
     private let root = FolderNode(url: URL(fileURLWithPath: "/"), title: "")
     fileprivate private(set) var placeCount = 0
@@ -98,6 +101,38 @@ final class FolderBrowserController: NSObject {
     /// The table showing the open folder's row (self-test hook for keyboard navigation).
     var currentTable: NSTableView? {
         path.isEmpty ? nil : columns[path.count - 1].table
+    }
+
+    /// Whether the keyboard is in the columns.
+    var hasFocus: Bool {
+        guard let responder = view.window?.firstResponder as? NSTableView else { return false }
+        return columns.contains { $0.table === responder }
+    }
+
+    /// Puts the keyboard in the column of the open folder.
+    func focus() {
+        guard let table = currentTable ?? columns.first?.table else { return }
+        view.window?.makeFirstResponder(table)
+    }
+
+    /// The open folder's tick is in the accent colour only while the keyboard is here.
+    fileprivate func focusChanged() {
+        // The window's first responder changes after become/resign return.
+        DispatchQueue.main.async { [weak self] in
+            for column in self?.columns ?? [] {
+                column.table.enumerateAvailableRowViews { rowView, _ in rowView.needsDisplay = true }
+            }
+        }
+    }
+
+    fileprivate func enterGrid() {
+        // Open the folder now rather than after the arrow-key pause, so the grid shows it.
+        if let pendingOpen, let url = selectedURL {
+            pendingOpen.cancel()
+            self.pendingOpen = nil
+            onOpen?(url)
+        }
+        onEnterGrid?()
     }
 
     override init() {
@@ -151,6 +186,7 @@ final class FolderBrowserController: NSObject {
 
     /// Column i lists the children of `[root] + path` at i, with `path[i]` selected.
     private func rebuildColumns() {
+        let hadFocus = hasFocus
         let parents = [root] + path
         var rebuilt: [FolderColumn] = []
         for (index, parent) in parents.enumerated() {
@@ -170,6 +206,7 @@ final class FolderBrowserController: NSObject {
         view.setColumns(columns.map(\.scrollView))
         view.scrollToLastColumn()
         for column in columns { column.centreSelection() }
+        if hadFocus && !hasFocus { focus() }
 
         if let last = parents.last, last.children == nil {
             last.loadChildren { [weak self] in
@@ -349,6 +386,7 @@ final class FolderColumn: NSObject, NSTableViewDataSource, NSTableViewDelegate {
     func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? {
         let rowView = FolderRowView()
         rowView.isCurrent = owner?.isCurrentColumn(index) ?? false
+        rowView.browser = owner
         return rowView
     }
 
@@ -375,9 +413,11 @@ final class FolderColumn: NSObject, NSTableViewDataSource, NSTableViewDelegate {
 
     fileprivate func moveLeft() { owner?.moveLeft(from: self) }
     fileprivate func moveRight() { owner?.moveRight(from: self) }
+    fileprivate func enterGrid() { owner?.enterGrid() }
+    fileprivate func focusChanged() { owner?.focusChanged() }
 }
 
-/// ← and → move between columns, as in Finder.
+/// ← and → move between columns, as in Finder; Return and Tab go to the pictures.
 final class FolderColumnTable: NSTableView {
     fileprivate weak var column: FolderColumn?
 
@@ -385,17 +425,30 @@ final class FolderColumnTable: NSTableView {
         switch event.charactersIgnoringModifiers?.unicodeScalars.first.map({ Int($0.value) }) {
         case NSLeftArrowFunctionKey: column?.moveLeft()
         case NSRightArrowFunctionKey: column?.moveRight()
+        case 0x0D, 0x03, 0x09, 0x19: column?.enterGrid() // return, enter, tab, shift-tab
         default: super.keyDown(with: event)
         }
     }
+
+    override func becomeFirstResponder() -> Bool {
+        defer { column?.focusChanged() }
+        return super.becomeFirstResponder()
+    }
+
+    override func resignFirstResponder() -> Bool {
+        defer { column?.focusChanged() }
+        return super.resignFirstResponder()
+    }
 }
 
-/// Marks the selected folders with a small tick in the left margin, like a bookmark tab: grey
-/// for the folders along the path, the accent colour for the open folder. (Chosen over a filled
-/// pill and four other styles; see docs/design/highlight-options.png.)
+/// Marks the selected folders with a small tick in the left margin, like a bookmark tab: light
+/// grey for the folders along the path; for the open folder, the accent colour while the keyboard
+/// is in the columns and a darker grey while it is in the pictures. (Chosen over a filled pill
+/// and four other styles; see docs/design/highlight-options.png.)
 final class FolderRowView: NSTableRowView {
     /// This row's column holds the open folder.
     var isCurrent = false
+    fileprivate weak var browser: FolderBrowserController?
 
     override var isSelected: Bool {
         didSet { updateCells() }
@@ -414,7 +467,8 @@ final class FolderRowView: NSTableRowView {
     }
 
     override func drawSelection(in dirtyRect: NSRect) {
-        (isCurrent ? NSColor.controlAccentColor : NSColor.tertiaryLabelColor).setFill()
+        let color: NSColor = !isCurrent ? .tertiaryLabelColor : browser?.hasFocus == true ? .controlAccentColor : .secondaryLabelColor
+        color.setFill()
         let tick = NSRect(x: ColumnMetrics.tickX, y: bounds.midY - ColumnMetrics.tickHeight / 2,
                           width: ColumnMetrics.tickWidth, height: ColumnMetrics.tickHeight)
         NSBezierPath(roundedRect: tick, xRadius: ColumnMetrics.tickWidth / 2, yRadius: ColumnMetrics.tickWidth / 2).fill()

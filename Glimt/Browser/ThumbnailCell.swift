@@ -42,6 +42,10 @@ final class ThumbnailTileView: NSView {
     var isSelected = false {
         didSet { if isSelected != oldValue { needsDisplay = true; needsLayout = true } }
     }
+    /// The keyboard is in the grid: selection in the accent colour rather than grey.
+    var isEmphasized = true {
+        didSet { if isEmphasized != oldValue && isSelected { needsDisplay = true } }
+    }
     var showsName = true {
         didSet { nameLabel.isHidden = !showsName; needsLayout = true }
     }
@@ -189,13 +193,13 @@ final class ThumbnailTileView: NSView {
         let accent = NSColor.controlAccentColor
         plate.backgroundColor = nil
         plate.borderWidth = isSelected ? 2 : 0
-        plate.borderColor = accent.cgColor
+        plate.borderColor = (isEmphasized ? accent : .secondaryLabelColor).cgColor
         // An inset hairline (borders draw inside the bounds) keeps white or pale pictures from
         // dissolving into the background, without competing with the picture's own colours.
         imageLayer.borderWidth = 1
         imageLayer.borderColor = NSColor.labelColor.withAlphaComponent(0.1).cgColor
-        nameBackground.backgroundColor = accent.cgColor
-        nameLabel.textColor = isSelected ? .white : .secondaryLabelColor
+        nameBackground.backgroundColor = (isEmphasized ? accent : .unemphasizedSelectedContentBackgroundColor).cgColor
+        nameLabel.textColor = !isSelected ? .secondaryLabelColor : isEmphasized ? .white : .labelColor
         for (dot, color) in zip(tagDots, tagColors) {
             dot.backgroundColor = color.cgColor
             dot.borderColor = Palette.gridBackground.cgColor

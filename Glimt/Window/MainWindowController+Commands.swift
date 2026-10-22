@@ -199,7 +199,7 @@ extension MainWindowController {
     private func visitHistory(_ index: Int) {
         historyIndex = index
         isNavigatingHistory = true
-        open(history[index])
+        open(history[index], focus: folderColumns.hasFocus ? .unchanged : .grid)
         isNavigatingHistory = false
     }
 
@@ -207,7 +207,7 @@ extension MainWindowController {
         guard let folder = model.folder, folder.path != "/" else { return }
         let parent = folder.deletingLastPathComponent()
         let previous = folder
-        open(parent)
+        open(parent, focus: folderColumns.hasFocus ? .unchanged : .grid)
         // Select the folder we came from once the parent has loaded.
         Task {
             try? await Task.sleep(for: .milliseconds(50))
