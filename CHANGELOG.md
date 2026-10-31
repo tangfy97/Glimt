@@ -5,7 +5,7 @@ All notable changes to Glimt are listed here. The format follows [Keep a Changel
 ## [Unreleased]
 
 ### Added
-- A Mac App Store version that runs in the App Sandbox. Glimt asks once for each folder outside Pictures, Movies and Downloads, or once for the whole home folder, and remembers the answer.
+- A Mac App Store version that runs in the App Sandbox with the fewest permissions possible. It asks for nothing up front; the first time you open a folder it hasn't been given, it asks for that folder only, and remembers the answer.
 
 ## [0.1.4] - 2026-10-22
 

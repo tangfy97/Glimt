@@ -185,6 +185,7 @@
       }
     },
     "Allow Access to Home Folder…": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -446,6 +447,7 @@
       }
     },
     "Choose this folder, or one that contains it. Allowing your home folder lets Glimt open every folder inside it.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -967,6 +969,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "通用"
+          }
+        }
+      }
+    },
+    "Glimt can open this folder once you allow it. Only the folder you choose is shared.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "允许后，Glimt 才能打开这个文件夹。只会共享你选择的文件夹。"
           }
         }
       }

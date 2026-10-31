@@ -1,6 +1,6 @@
 # Mac App Store
 
-The App Store version is the `AppStore` build configuration: the same code as the GitHub release, run in the App Sandbox. The sandbox only lets Glimt into folders the user has chosen, so `FolderAccess` keeps a security-scoped bookmark for each one, and the window shows **Allow Access…** for a folder it can't read yet. Pictures, Movies and Downloads are open from the start through entitlements ([Glimt-AppStore.entitlements](../Glimt/Glimt-AppStore.entitlements)).
+The App Store version is the `AppStore` build configuration: the same code as the GitHub release, run in the App Sandbox. The sandbox only lets Glimt into folders the user has chosen, so `FolderAccess` keeps a security-scoped bookmark for each one, and the window shows **Allow Access…** for a folder it can't read yet. It asks for nothing up front and holds only two entitlements, the sandbox and read-write access to folders the user chooses ([Glimt-AppStore.entitlements](../Glimt/Glimt-AppStore.entitlements)); Apple rejected an earlier build for also naming Pictures, Movies and Downloads (guideline 2.4.5(i)). Add an entitlement only for a feature that cannot work without it, and say which one in the review notes.
 
 ## Building and uploading
 
@@ -134,7 +134,7 @@ Glimt 免费开源，采用 Apache License 2.0 许可，由挪威的小型软件
 
 > Glimt is an image viewer and sorter. It needs no account and has no in-app purchases.
 >
-> It runs in the App Sandbox. Pictures, Movies and Downloads open directly. For any other folder, the window shows "Allow Access…", which opens a standard open panel on that folder; once allowed, the folder is remembered with a security-scoped bookmark. "Allow Access to Home Folder…" on the welcome screen allows everything at once.
+> It runs in the App Sandbox with only the user-selected read-write entitlement, and asks for nothing up front. Open a folder with File ▸ Open (⌘O), by dropping it on the window, or from Finder. A folder Glimt hasn't been given yet, for example one picked in the folder columns at the top, shows "Allow Access…", which opens a standard open panel on that folder; once allowed, it is remembered with a security-scoped bookmark. Moving, copying, renaming, rotating, tagging and trashing files write only inside folders the user has chosen.
 >
 > To try sorting: open a folder of photos, press 1 and choose any folder when asked; the photo moves there. Press ⌘Z to undo.
 >

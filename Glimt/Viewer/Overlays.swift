@@ -257,10 +257,6 @@ final class PlaceholderView: NSView {
             isWelcome = true
             title.stringValue = "Glimt"
             detail.stringValue = String(localized: "Open a folder with ⌘O, or drop one here. Number keys then sort what you see into folders.")
-            // In the sandbox, offer the one permission that makes the folder columns work.
-            if FolderAccess.isSandboxed, !FolderAccess.canRead(FolderAccess.home) {
-                showAllow(FolderAccess.home, title: String(localized: "Allow Access to Home Folder…"))
-            }
             showRecents()
         case .loading(let folder):
             title.stringValue = folder
@@ -278,13 +274,12 @@ final class PlaceholderView: NSView {
         case .needsAccess(let folder):
             title.stringValue = folder.lastPathComponent
             detail.stringValue = String(localized: "Glimt needs your permission to open this folder. You only need to allow it once.")
-            showAllow(folder, title: String(localized: "Allow Access…"))
+            showAllow(folder)
         }
     }
 
-    private func showAllow(_ folder: URL, title: String) {
+    private func showAllow(_ folder: URL) {
         accessFolder = folder
-        allowButton.title = title
         allowButton.isHidden = false
     }
 

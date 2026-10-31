@@ -6,10 +6,10 @@ extension Notification.Name {
 }
 
 /// The App Store build runs in the App Sandbox, where Glimt may only read folders the user has
-/// chosen (plus Pictures, Movies and Downloads, which its entitlements name). Every folder the
-/// user hands over, through an open panel, a drop or Finder, is kept as a security-scoped
-/// bookmark so the permission survives relaunching. Outside the sandbox every check passes and
-/// nothing is stored.
+/// chosen. It asks for nothing up front: a folder it can't read yet shows Allow Access…, and only
+/// that folder is asked for. Every folder the user hands over, through an open panel, a drop or
+/// Finder, is kept as a security-scoped bookmark so the permission survives relaunching. Outside
+/// the sandbox every check passes and nothing is stored.
 @MainActor
 enum FolderAccess {
     static let isSandboxed = ProcessInfo.processInfo.environment["APP_SANDBOX_CONTAINER_ID"] != nil
@@ -84,7 +84,7 @@ enum FolderAccess {
         panel.allowsMultipleSelection = false
         panel.directoryURL = folder
         panel.prompt = String(localized: "Allow Access")
-        panel.message = String(localized: "Choose this folder, or one that contains it. Allowing your home folder lets Glimt open every folder inside it.")
+        panel.message = String(localized: "Glimt can open this folder once you allow it. Only the folder you choose is shared.")
         let response = if let window { await panel.beginSheetModal(for: window) } else { panel.runModal() }
         guard response == .OK, let url = panel.url else { return false }
         remember(url)
@@ -92,11 +92,8 @@ enum FolderAccess {
         return canRead(folder)
     }
 
-    /// Folders the entitlements open without asking.
-    private static let entitled = ["Pictures", "Movies", "Downloads"].map { home.appendingPathComponent($0).path }
-
     private static func isCovered(_ url: URL) -> Bool {
         let path = url.standardizedFileURL.path
-        return (entitled + granted.keys).contains { path == $0 || path.hasPrefix($0 == "/" ? "/" : $0 + "/") }
+        return granted.keys.contains { path == $0 || path.hasPrefix($0 == "/" ? "/" : $0 + "/") }
     }
 }
